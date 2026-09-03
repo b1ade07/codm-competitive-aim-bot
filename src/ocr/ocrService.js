@@ -117,7 +117,7 @@ export async function runOCR(imageUrl) {
 
 
     // --------------------------------------------------------
-    // CREATE FILE
+    // CREATE FORM DATA
     // --------------------------------------------------------
 
     const blob =
@@ -278,8 +278,21 @@ export async function runOCR(imageUrl) {
     }
 
 
+    // --------------------------------------------------------
+    // SUCCESS
+    // --------------------------------------------------------
+
     console.log(
         "OCR: Text successfully extracted."
+    );
+
+
+    // TEMPORARY DEBUG LOG
+    // This lets us see exactly what OCR.Space
+    // returned for the COD:M screenshot.
+
+    console.log(
+        "OCR RAW TEXT:\n" + text
     );
 
 
