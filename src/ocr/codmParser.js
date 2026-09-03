@@ -1,5 +1,6 @@
 // ============================================================
 // COD:M OCR PARSER
+// Robust parser for COD:M AIM DRILLS screenshots
 // ============================================================
 
 export function parseCodmStats(ocrText) {
@@ -8,27 +9,25 @@ export function parseCodmStats(ocrText) {
         !ocrText ||
         typeof ocrText !== "string"
     ) {
-
         throw new Error(
             "OCR text is empty."
         );
-
     }
 
+    const lines = ocrText
+        .replace(/\r/g, "")
+        .split("\n")
+        .map(line =>
+            line
+                .replace(/\u00A0/g, " ")
+                .trim()
+        )
+        .filter(Boolean);
 
-    const lines =
-        ocrText
-            .replace(/\r/g, "")
-            .split("\n")
-            .map(
-                line => line.trim()
-            )
-            .filter(Boolean);
-
-
-    // ========================================================
-    // FIND REQUIRED VALUES
-    // ========================================================
+    console.log(
+        "COD:M PARSER: OCR lines:",
+        lines
+    );
 
     const kills =
         findKills(lines);
@@ -39,95 +38,63 @@ export function parseCodmStats(ocrText) {
     const headshotAccuracy =
         findHeadshotAccuracy(lines);
 
-
-    // ========================================================
-    // VALIDATE EXISTENCE
-    // ========================================================
+    console.log(
+        "COD:M PARSER RESULT:",
+        {
+            kills,
+            accuracy,
+            headshotAccuracy
+        }
+    );
 
     if (kills === null) {
-
         throw new Error(
             "Could not detect KILLS."
         );
-
     }
 
-
     if (accuracy === null) {
-
         throw new Error(
             "Could not detect ACCURACY."
         );
-
     }
 
-
     if (headshotAccuracy === null) {
-
         throw new Error(
             "Could not detect HEADSHOT ACCURACY."
         );
-
     }
-
-
-    // ========================================================
-    // VALIDATE KILLS
-    // ========================================================
 
     if (
         !Number.isInteger(kills) ||
         kills < 0 ||
         kills > 9999
     ) {
-
         throw new Error(
             "Detected KILLS value is invalid."
         );
-
     }
-
-
-    // ========================================================
-    // VALIDATE ACCURACY
-    // ========================================================
 
     if (
         accuracy < 0 ||
         accuracy > 100
     ) {
-
         throw new Error(
             "Detected ACCURACY value is invalid."
         );
-
     }
-
-
-    // ========================================================
-    // VALIDATE HEADSHOT ACCURACY
-    // ========================================================
 
     if (
         headshotAccuracy < 0 ||
         headshotAccuracy > 100
     ) {
-
         throw new Error(
             "Detected HEADSHOT ACCURACY value is invalid."
         );
-
     }
 
-
-    // ========================================================
-    // RETURN CLEAN VALUES
-    // ========================================================
-
     return {
-
-        kills:
-            Math.round(kills),
+        kills: Math.round(kills),
 
         accuracy:
             Number(
@@ -138,70 +105,72 @@ export function parseCodmStats(ocrText) {
             Number(
                 headshotAccuracy.toFixed(2)
             )
-
     };
-
 }
 
 
 // ============================================================
-// FIND KILLS
+// KILLS
 // ============================================================
 
 function findKills(lines) {
 
-
-    // --------------------------------------------------------
-    // CASE 1:
+    // Example:
     // Kills 775
     // Kills: 775
     // Kills - 775
-    // --------------------------------------------------------
 
-    for (const line of lines) {
+    for (
+        let i = 0;
+        i < lines.length;
+        i++
+    ) {
 
-        const match =
+        const line =
+            lines[i];
+
+        const sameLine =
             line.match(
                 /^kills?\s*[:\-]?\s*(\d{1,4})$/i
             );
 
-        if (match) {
-
+        if (sameLine) {
             return Number(
-                match[1]
+                sameLine[1]
             );
-
         }
 
+        const inline =
+            line.match(
+                /\bkills?\b\s*[:\-]?\s*(\d{1,4})/i
+            );
+
+        if (inline) {
+            return Number(
+                inline[1]
+            );
+        }
     }
 
-
-    // --------------------------------------------------------
-    // CASE 2:
+    // Example:
     //
     // Kills
     // 775
-    // --------------------------------------------------------
 
-    const killsIndex =
+    const index =
         findLineIndex(
             lines,
             /^kills?$/i
         );
 
-
-    if (killsIndex !== -1) {
+    if (index !== -1) {
 
         for (
-            let i =
-                killsIndex + 1;
-
-            i <
-                Math.min(
-                    killsIndex + 11,
-                    lines.length
-                );
-
+            let i = index + 1;
+            i < Math.min(
+                index + 10,
+                lines.length
+            );
             i++
         ) {
 
@@ -213,116 +182,272 @@ function findKills(lines) {
             if (
                 value !== null
             ) {
-
                 return value;
-
             }
-
         }
-
     }
 
-
-    // --------------------------------------------------------
-    // CASE 3:
-    // Kills 775 somewhere in OCR text
-    // --------------------------------------------------------
-
+    // Final fallback
     const text =
-        lines.join("\n");
-
+        lines.join(" ");
 
     const match =
         text.match(
-            /kills?\s*[:\-]?\s*(\d{1,4})/i
+            /\bkills?\b\s*[:\-]?\s*(\d{1,4})/i
         );
 
-
     if (match) {
-
         return Number(
             match[1]
         );
-
     }
 
-
     return null;
-
 }
 
 
 // ============================================================
-// FIND NORMAL ACCURACY
+// ACCURACY
 // ============================================================
 
 function findAccuracy(lines) {
 
-
-    // --------------------------------------------------------
     // IMPORTANT:
-    // Ignore Headshot Accuracy.
-    // --------------------------------------------------------
+    // Search normal Accuracy BEFORE looking at
+    // Headshot Accuracy.
+    //
+    // This prevents:
+    //
+    // Accuracy = 43.83%
+    // Headshot Accuracy = 3.16%
+    //
+    // from being confused.
 
-    for (const line of lines) {
+    for (
+        let i = 0;
+        i < lines.length;
+        i++
+    ) {
+
+        const line =
+            lines[i];
+
+        // Ignore Headshot Accuracy
+        if (
+            /head\s*shot\s*accuracy/i.test(
+                line
+            )
+        ) {
+            continue;
+        }
+
+        // ----------------------------------------------------
+        // Same line
+        // Accuracy 43.83%
+        // Accuracy: 43.83%
+        // ----------------------------------------------------
+
+        const sameLine =
+            line.match(
+                /^accuracy\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*%?/i
+            );
+
+        if (sameLine) {
+
+            const value =
+                parsePercentage(
+                    sameLine[1]
+                );
+
+            if (
+                value !== null
+            ) {
+                return value;
+            }
+        }
+
+        // ----------------------------------------------------
+        // Inline
+        // Accuracy: 43.83%
+        // ----------------------------------------------------
+
+        const inline =
+            line.match(
+                /\baccuracy\b\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*%?/i
+            );
 
         if (
-            /head\s*shot/i.test(
+            inline &&
+            !/head\s*shot/i.test(
                 line
             )
         ) {
 
-            continue;
+            const value =
+                parsePercentage(
+                    inline[1]
+                );
 
+            if (
+                value !== null
+            ) {
+                return value;
+            }
         }
-
-
-        const match =
-            line.match(
-                /^accuracy\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*%?$/i
-            );
-
-
-        if (match) {
-
-            return Number(
-                match[1]
-                    .replace(",", ".")
-            );
-
-        }
-
     }
 
-
     // --------------------------------------------------------
-    // CASE:
+    // Separate lines
     //
     // Accuracy
     // 43.83%
     // --------------------------------------------------------
 
-    const accuracyIndex =
+    const index =
         findLineIndex(
             lines,
             /^accuracy$/i
         );
 
-
-    if (
-        accuracyIndex !== -1
-    ) {
+    if (index !== -1) {
 
         for (
-            let i =
-                accuracyIndex + 1;
+            let i = index + 1;
+            i < Math.min(
+                index + 10,
+                lines.length
+            );
+            i++
+        ) {
 
-            i <
-                Math.min(
-                    accuracyIndex + 6,
-                    lines.length
+            // Stop if another metric label begins.
+            if (
+                /^(head\s*shot\s*accuracy|kills?|total\s*damage|ttk|hit\s*distance)$/i.test(
+                    lines[i]
+                )
+            ) {
+                break;
+            }
+
+            const value =
+                parsePercentage(
+                    lines[i]
                 );
 
+            if (
+                value !== null
+            ) {
+                return value;
+            }
+        }
+    }
+
+    // --------------------------------------------------------
+    // Full-text fallback
+    // --------------------------------------------------------
+
+    const text =
+        lines.join(" ");
+
+    const match =
+        text.match(
+            /(?:^|\s)accuracy\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*%?/i
+        );
+
+    if (
+        match &&
+        !/head\s*shot\s*accuracy/i.test(
+            match[0]
+        )
+    ) {
+
+        const value =
+            parsePercentage(
+                match[1]
+            );
+
+        if (
+            value !== null
+        ) {
+            return value;
+        }
+    }
+
+    return null;
+}
+
+
+// ============================================================
+// HEADSHOT ACCURACY
+// ============================================================
+
+function findHeadshotAccuracy(lines) {
+
+    // --------------------------------------------------------
+    // Same line
+    //
+    // Headshot Accuracy 3.16%
+    // Head Shot Accuracy: 3.16%
+    // --------------------------------------------------------
+
+    for (
+        let i = 0;
+        i < lines.length;
+        i++
+    ) {
+
+        const line =
+            lines[i];
+
+        if (
+            !/head\s*shot/i.test(
+                line
+            )
+        ) {
+            continue;
+        }
+
+        const match =
+            line.match(
+                /head\s*shot\s*accuracy\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*%?/i
+            );
+
+        if (match) {
+
+            const value =
+                parsePercentage(
+                    match[1]
+                );
+
+            if (
+                value !== null
+            ) {
+                return value;
+            }
+        }
+    }
+
+    // --------------------------------------------------------
+    // Separate lines
+    //
+    // Headshot Accuracy
+    // 3.16%
+    // --------------------------------------------------------
+
+    const index =
+        findLineIndex(
+            lines,
+            /^head\s*shot\s*accuracy$/i
+        );
+
+    if (index !== -1) {
+
+        for (
+            let i = index + 1;
+            i < Math.min(
+                index + 10,
+                lines.length
+            );
             i++
         ) {
 
@@ -331,71 +456,35 @@ function findAccuracy(lines) {
                     lines[i]
                 );
 
-
             if (
                 value !== null
             ) {
-
                 return value;
-
             }
 
+            // Don't search indefinitely into
+            // another metric.
+            if (
+                /^(accuracy|kills?|total\s*damage|ttk|hit\s*distance)$/i.test(
+                    lines[i]
+                )
+            ) {
+                break;
+            }
         }
-
     }
 
-
-    return null;
-
-}
-
-
-// ============================================================
-// FIND HEADSHOT ACCURACY
-// ============================================================
-
-function findHeadshotAccuracy(lines) {
-
-
     // --------------------------------------------------------
-    // CASE 1:
+    // OCR may split:
     //
-    // Headshot Accuracy 3.16%
-    // Headshot Accuracy: 3.16%
-    // --------------------------------------------------------
-
-    for (const line of lines) {
-
-        const match =
-            line.match(
-                /^head\s*shot\s*accuracy\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*%?$/i
-            );
-
-
-        if (match) {
-
-            return Number(
-                match[1]
-                    .replace(",", ".")
-            );
-
-        }
-
-    }
-
-
-    // --------------------------------------------------------
-    // CASE 2:
-    //
-    // Headshot
+    // Head Shot
     // Accuracy
     // 3.16%
     // --------------------------------------------------------
 
     for (
         let i = 0;
-        i <
-            lines.length - 2;
+        i < lines.length - 1;
         i++
     ) {
 
@@ -409,15 +498,11 @@ function findHeadshotAccuracy(lines) {
         ) {
 
             for (
-                let j =
-                    i + 2;
-
-                j <
-                    Math.min(
-                        i + 7,
-                        lines.length
-                    );
-
+                let j = i + 2;
+                j < Math.min(
+                    i + 10,
+                    lines.length
+                );
                 j++
             ) {
 
@@ -426,94 +511,47 @@ function findHeadshotAccuracy(lines) {
                         lines[j]
                     );
 
-
                 if (
                     value !== null
                 ) {
-
                     return value;
-
                 }
-
             }
-
         }
-
     }
 
-
     // --------------------------------------------------------
-    // CASE 3:
-    //
-    // Headshot Accuracy
-    // 3.16%
-    //
-    // IMPORTANT:
-    // Search ONLY immediately after the exact label.
+    // Full text fallback
     // --------------------------------------------------------
 
-    for (
-        let i = 0;
-        i < lines.length;
-        i++
-    ) {
+    const text =
+        lines.join(" ");
+
+    const match =
+        text.match(
+            /head\s*shot\s*accuracy\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*%?/i
+        );
+
+    if (match) {
+
+        const value =
+            parsePercentage(
+                match[1]
+            );
 
         if (
-            /^head\s*shot\s*accuracy$/i.test(
-                lines[i]
-            )
+            value !== null
         ) {
-
-            for (
-                let j =
-                    i + 1;
-
-                j <
-                    Math.min(
-                        i + 7,
-                        lines.length
-                    );
-
-                j++
-            ) {
-
-                const value =
-                    parsePercentage(
-                        lines[j]
-                    );
-
-
-                if (
-                    value !== null
-                ) {
-
-                    return value;
-
-                }
-
-            }
-
+            return value;
         }
-
     }
 
-
-    // --------------------------------------------------------
-    // NO GENERIC FALLBACK
-    //
-    // This is VERY IMPORTANT.
-    //
-    // We never take the normal Accuracy value
-    // and use it as Headshot Accuracy.
-    // --------------------------------------------------------
-
     return null;
-
 }
 
 
 // ============================================================
-// FIND LINE INDEX
+// HELPERS
 // ============================================================
 
 function findLineIndex(
@@ -532,21 +570,16 @@ function findLineIndex(
                 lines[i]
             )
         ) {
-
             return i;
-
         }
-
     }
 
-
     return -1;
-
 }
 
 
 // ============================================================
-// PARSE INTEGER
+// INTEGER PARSER
 // ============================================================
 
 function parseInteger(
@@ -554,55 +587,46 @@ function parseInteger(
 ) {
 
     if (!value) {
-
         return null;
-
     }
-
 
     const cleaned =
         value
             .replace(/,/g, "")
             .trim();
 
-
     if (
         !/^\d{1,4}$/.test(
             cleaned
         )
     ) {
-
         return null;
-
     }
 
-
     const number =
-        Number(
-            cleaned
-        );
-
+        Number(cleaned);
 
     if (
         !Number.isInteger(
             number
-        ) ||
+        )
+    ) {
+        return null;
+    }
+
+    if (
         number < 0 ||
         number > 9999
     ) {
-
         return null;
-
     }
 
-
     return number;
-
 }
 
 
 // ============================================================
-// PARSE PERCENTAGE
+// PERCENTAGE PARSER
 // ============================================================
 
 function parsePercentage(
@@ -610,53 +634,30 @@ function parsePercentage(
 ) {
 
     if (!value) {
-
         return null;
-
     }
 
-
-    const match =
-        value.match(
-            /^(\d+(?:[.,]\d+)?)\s*%?$/
-        );
-
-
-    if (!match) {
-
-        return null;
-
-    }
-
+    const cleaned =
+        String(value)
+            .replace(",", ".")
+            .replace("%", "")
+            .trim();
 
     const number =
-        Number(
-            match[1]
-                .replace(",", ".")
-        );
-
+        Number(cleaned);
 
     if (
-        Number.isNaN(
-            number
-        )
+        Number.isNaN(number)
     ) {
-
         return null;
-
     }
-
 
     if (
         number < 0 ||
         number > 100
     ) {
-
         return null;
-
     }
 
-
     return number;
-
 }
