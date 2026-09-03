@@ -15,11 +15,15 @@ const OCR_ENDPOINT =
 export async function runOCR(imageUrl) {
 
     if (!imageUrl) {
-        throw new Error("OCR image URL is missing.");
+        throw new Error(
+            "OCR image URL is missing."
+        );
     }
+
 
     const apiKey =
         process.env.OCR_SPACE_API_KEY;
+
 
     if (!apiKey) {
         throw new Error(
@@ -28,48 +32,149 @@ export async function runOCR(imageUrl) {
     }
 
 
-    // --------------------------------------------------------
-    // REQUEST BODY
-    // --------------------------------------------------------
-
-    const body =
-        new URLSearchParams();
-
-    body.append(
-        "url",
-        imageUrl
+    console.log(
+        "OCR: Downloading Discord screenshot..."
     );
 
-    body.append(
+
+    // --------------------------------------------------------
+    // DOWNLOAD IMAGE FROM DISCORD
+    // --------------------------------------------------------
+
+    const imageResponse =
+        await fetch(imageUrl);
+
+
+    if (!imageResponse.ok) {
+
+        throw new Error(
+            `Could not download screenshot: HTTP ${imageResponse.status}`
+        );
+
+    }
+
+
+    const imageBuffer =
+        await imageResponse.arrayBuffer();
+
+
+    if (!imageBuffer.byteLength) {
+
+        throw new Error(
+            "Downloaded screenshot is empty."
+        );
+
+    }
+
+
+    console.log(
+        `OCR: Screenshot downloaded (${imageBuffer.byteLength} bytes).`
+    );
+
+
+    // --------------------------------------------------------
+    // DETERMINE IMAGE TYPE
+    // --------------------------------------------------------
+
+    const contentType =
+        imageResponse.headers.get(
+            "content-type"
+        ) || "image/png";
+
+
+    let extension =
+        "png";
+
+
+    if (
+        contentType.includes(
+            "jpeg"
+        ) ||
+        contentType.includes(
+            "jpg"
+        )
+    ) {
+
+        extension = "jpg";
+
+    } else if (
+        contentType.includes(
+            "webp"
+        )
+    ) {
+
+        extension = "webp";
+
+    } else if (
+        contentType.includes(
+            "gif"
+        )
+    ) {
+
+        extension = "gif";
+
+    }
+
+
+    // --------------------------------------------------------
+    // CREATE FILE
+    // --------------------------------------------------------
+
+    const blob =
+        new Blob(
+            [
+                imageBuffer
+            ],
+            {
+                type:
+                    contentType
+            }
+        );
+
+
+    const form =
+        new FormData();
+
+
+    form.append(
+        "file",
+        blob,
+        `codm_screenshot.${extension}`
+    );
+
+
+    form.append(
         "language",
         "eng"
     );
 
-    body.append(
+
+    form.append(
         "OCREngine",
         "2"
     );
 
-    body.append(
+
+    form.append(
         "isOverlayRequired",
         "false"
     );
 
-    body.append(
+
+    form.append(
         "scale",
         "true"
     );
 
-    // Tell OCR.Space this is an image.
-    body.append(
-        "filetype",
-        "JPG"
+
+    // --------------------------------------------------------
+    // SEND IMAGE DIRECTLY TO OCR.SPACE
+    // --------------------------------------------------------
+
+    console.log(
+        "OCR: Sending screenshot to OCR.Space..."
     );
 
-
-    // --------------------------------------------------------
-    // SEND REQUEST
-    // --------------------------------------------------------
 
     const response =
         await fetch(
@@ -78,12 +183,12 @@ export async function runOCR(imageUrl) {
                 method: "POST",
 
                 headers: {
-                    apikey: apiKey,
-                    "Content-Type":
-                        "application/x-www-form-urlencoded"
+                    apikey:
+                        apiKey
                 },
 
-                body
+                body:
+                    form
             }
         );
 
@@ -102,7 +207,7 @@ export async function runOCR(imageUrl) {
 
 
     // --------------------------------------------------------
-    // JSON RESPONSE
+    // READ RESPONSE
     // --------------------------------------------------------
 
     const data =
@@ -121,18 +226,24 @@ export async function runOCR(imageUrl) {
             Array.isArray(
                 data.ErrorMessage
             )
-                ? data.ErrorMessage.join(" ")
+                ? data.ErrorMessage.join(
+                    " "
+                )
                 : String(
                     data.ErrorMessage ||
                     "OCR processing failed."
                 );
 
-        throw new Error(message);
+
+        throw new Error(
+            message
+        );
+
     }
 
 
     // --------------------------------------------------------
-    // EXTRACT TEXT
+    // EXTRACT OCR TEXT
     // --------------------------------------------------------
 
     const text =
@@ -143,9 +254,12 @@ export async function runOCR(imageUrl) {
             ? data.ParsedResults
                 .map(
                     result =>
-                        result?.ParsedText || ""
+                        result?.ParsedText ||
+                        ""
                 )
-                .join("\n")
+                .join(
+                    "\n"
+                )
             : "";
 
 
@@ -153,7 +267,9 @@ export async function runOCR(imageUrl) {
     // EMPTY OCR RESULT
     // --------------------------------------------------------
 
-    if (!text.trim()) {
+    if (
+        !text.trim()
+    ) {
 
         throw new Error(
             "OCR returned no readable text."
@@ -162,15 +278,22 @@ export async function runOCR(imageUrl) {
     }
 
 
+    console.log(
+        "OCR: Text successfully extracted."
+    );
+
+
     // --------------------------------------------------------
     // RETURN
     // --------------------------------------------------------
 
     return {
 
-        text: text.trim(),
+        text:
+            text.trim(),
 
-        raw: data
+        raw:
+            data
 
     };
 
