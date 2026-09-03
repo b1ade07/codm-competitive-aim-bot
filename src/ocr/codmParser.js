@@ -1,6 +1,7 @@
 // ============================================================
 // COD:M OCR PARSER
-// Robust parser for COD:M AIM DRILLS screenshots
+// Handles COD:M screenshots where metric labels appear first
+// and their values appear together below the labels.
 // ============================================================
 
 export function parseCodmStats(ocrText) {
@@ -115,10 +116,11 @@ export function parseCodmStats(ocrText) {
 
 function findKills(lines) {
 
-    // Example:
-    // Kills 775
+    // --------------------------------------------------------
+    // CASE 1
     // Kills: 775
-    // Kills - 775
+    // Kills 775
+    // --------------------------------------------------------
 
     for (
         let i = 0;
@@ -152,23 +154,42 @@ function findKills(lines) {
         }
     }
 
-    // Example:
+    // --------------------------------------------------------
+    // CASE 2
     //
     // Kills
+    // ...
     // 775
+    //
+    // COD:M normally places the values below all labels.
+    // --------------------------------------------------------
 
-    const index =
+    const killsIndex =
         findLineIndex(
             lines,
             /^kills?$/i
         );
 
-    if (index !== -1) {
+    if (killsIndex !== -1) {
 
+        // First look for the COD:M layout.
+        const layoutValue =
+            findValueFromMetricLayout(
+                lines,
+                "kills"
+            );
+
+        if (
+            layoutValue !== null
+        ) {
+            return layoutValue;
+        }
+
+        // General fallback.
         for (
-            let i = index + 1;
+            let i = killsIndex + 1;
             i < Math.min(
-                index + 10,
+                killsIndex + 15,
                 lines.length
             );
             i++
@@ -187,21 +208,6 @@ function findKills(lines) {
         }
     }
 
-    // Final fallback
-    const text =
-        lines.join(" ");
-
-    const match =
-        text.match(
-            /\bkills?\b\s*[:\-]?\s*(\d{1,4})/i
-        );
-
-    if (match) {
-        return Number(
-            match[1]
-        );
-    }
-
     return null;
 }
 
@@ -212,16 +218,12 @@ function findKills(lines) {
 
 function findAccuracy(lines) {
 
-    // IMPORTANT:
-    // Search normal Accuracy BEFORE looking at
-    // Headshot Accuracy.
+    // --------------------------------------------------------
+    // First handle same-line formats:
     //
-    // This prevents:
-    //
-    // Accuracy = 43.83%
-    // Headshot Accuracy = 3.16%
-    //
-    // from being confused.
+    // Accuracy: 43.83%
+    // Accuracy 43.83%
+    // --------------------------------------------------------
 
     for (
         let i = 0;
@@ -232,56 +234,32 @@ function findAccuracy(lines) {
         const line =
             lines[i];
 
-        // Ignore Headshot Accuracy
         if (
-            /head\s*shot\s*accuracy/i.test(
+            /head\s*shot/i.test(
                 line
             )
         ) {
             continue;
         }
 
-        // ----------------------------------------------------
-        // Same line
-        // Accuracy 43.83%
-        // Accuracy: 43.83%
-        // ----------------------------------------------------
-
         const sameLine =
             line.match(
-                /^accuracy\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*%?/i
+                /^accuracy\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*%$/i
             );
 
         if (sameLine) {
 
-            const value =
-                parsePercentage(
-                    sameLine[1]
-                );
-
-            if (
-                value !== null
-            ) {
-                return value;
-            }
+            return parsePercentage(
+                sameLine[1]
+            );
         }
-
-        // ----------------------------------------------------
-        // Inline
-        // Accuracy: 43.83%
-        // ----------------------------------------------------
 
         const inline =
             line.match(
-                /\baccuracy\b\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*%?/i
+                /^accuracy\s*[:\-]?\s*(\d+(?:[.,]\d+)?)/i
             );
 
-        if (
-            inline &&
-            !/head\s*shot/i.test(
-                line
-            )
-        ) {
+        if (inline) {
 
             const value =
                 parsePercentage(
@@ -297,32 +275,78 @@ function findAccuracy(lines) {
     }
 
     // --------------------------------------------------------
-    // Separate lines
+    // COD:M ACTUAL LAYOUT
     //
+    // Kills
+    // Total Damage
     // Accuracy
+    // Headshot Accuracy
+    // TTK
+    // Hit Distance
+    //
+    // 775
+    // 78626.05
     // 43.83%
+    // 3.16%
+    // Counting
+    // 22.66m
+    //
+    // Therefore:
+    // Accuracy = first percentage value
+    // Headshot Accuracy = second percentage value
     // --------------------------------------------------------
 
-    const index =
+    const accuracyIndex =
         findLineIndex(
             lines,
             /^accuracy$/i
         );
 
-    if (index !== -1) {
+    const headshotIndex =
+        findLineIndex(
+            lines,
+            /^head\s*shot\s*accuracy$/i
+        );
+
+    if (
+        accuracyIndex !== -1 &&
+        headshotIndex !== -1 &&
+        headshotIndex > accuracyIndex
+    ) {
+
+        const value =
+            findPercentageValuesAfterHeaders(
+                lines,
+                accuracyIndex,
+                headshotIndex
+            );
+
+        if (
+            value !== null
+        ) {
+            return value;
+        }
+    }
+
+    // --------------------------------------------------------
+    // Separate-line fallback
+    // --------------------------------------------------------
+
+    if (
+        accuracyIndex !== -1
+    ) {
 
         for (
-            let i = index + 1;
+            let i = accuracyIndex + 1;
             i < Math.min(
-                index + 10,
+                accuracyIndex + 15,
                 lines.length
             );
             i++
         ) {
 
-            // Stop if another metric label begins.
             if (
-                /^(head\s*shot\s*accuracy|kills?|total\s*damage|ttk|hit\s*distance)$/i.test(
+                /^head\s*shot\s*accuracy$/i.test(
                     lines[i]
                 )
             ) {
@@ -342,37 +366,6 @@ function findAccuracy(lines) {
         }
     }
 
-    // --------------------------------------------------------
-    // Full-text fallback
-    // --------------------------------------------------------
-
-    const text =
-        lines.join(" ");
-
-    const match =
-        text.match(
-            /(?:^|\s)accuracy\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*%?/i
-        );
-
-    if (
-        match &&
-        !/head\s*shot\s*accuracy/i.test(
-            match[0]
-        )
-    ) {
-
-        const value =
-            parsePercentage(
-                match[1]
-            );
-
-        if (
-            value !== null
-        ) {
-            return value;
-        }
-    }
-
     return null;
 }
 
@@ -384,10 +377,9 @@ function findAccuracy(lines) {
 function findHeadshotAccuracy(lines) {
 
     // --------------------------------------------------------
-    // Same line
+    // Same-line format
     //
-    // Headshot Accuracy 3.16%
-    // Head Shot Accuracy: 3.16%
+    // Headshot Accuracy: 3.16%
     // --------------------------------------------------------
 
     for (
@@ -407,16 +399,28 @@ function findHeadshotAccuracy(lines) {
             continue;
         }
 
-        const match =
+        const sameLine =
             line.match(
-                /head\s*shot\s*accuracy\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*%?/i
+                /head\s*shot\s*accuracy\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*%/i
             );
 
-        if (match) {
+        if (sameLine) {
+
+            return parsePercentage(
+                sameLine[1]
+            );
+        }
+
+        const inline =
+            line.match(
+                /head\s*shot\s*accuracy\s*[:\-]?\s*(\d+(?:[.,]\d+)?)/i
+            );
+
+        if (inline) {
 
             const value =
                 parsePercentage(
-                    match[1]
+                    inline[1]
                 );
 
             if (
@@ -428,24 +432,53 @@ function findHeadshotAccuracy(lines) {
     }
 
     // --------------------------------------------------------
-    // Separate lines
-    //
-    // Headshot Accuracy
-    // 3.16%
+    // COD:M ACTUAL LAYOUT
     // --------------------------------------------------------
 
-    const index =
+    const accuracyIndex =
+        findLineIndex(
+            lines,
+            /^accuracy$/i
+        );
+
+    const headshotIndex =
         findLineIndex(
             lines,
             /^head\s*shot\s*accuracy$/i
         );
 
-    if (index !== -1) {
+    if (
+        accuracyIndex !== -1 &&
+        headshotIndex !== -1 &&
+        headshotIndex > accuracyIndex
+    ) {
+
+        const percentages =
+            findAllPercentageValuesAfterHeaders(
+                lines,
+                accuracyIndex
+            );
+
+        if (
+            percentages.length >= 2
+        ) {
+
+            return percentages[1];
+        }
+    }
+
+    // --------------------------------------------------------
+    // Separate lines
+    // --------------------------------------------------------
+
+    if (
+        headshotIndex !== -1
+    ) {
 
         for (
-            let i = index + 1;
+            let i = headshotIndex + 1;
             i < Math.min(
-                index + 10,
+                headshotIndex + 15,
                 lines.length
             );
             i++
@@ -461,24 +494,15 @@ function findHeadshotAccuracy(lines) {
             ) {
                 return value;
             }
-
-            // Don't search indefinitely into
-            // another metric.
-            if (
-                /^(accuracy|kills?|total\s*damage|ttk|hit\s*distance)$/i.test(
-                    lines[i]
-                )
-            ) {
-                break;
-            }
         }
     }
 
     // --------------------------------------------------------
-    // OCR may split:
+    // OCR split format:
     //
     // Head Shot
     // Accuracy
+    // ...
     // 3.16%
     // --------------------------------------------------------
 
@@ -497,52 +521,17 @@ function findHeadshotAccuracy(lines) {
             )
         ) {
 
-            for (
-                let j = i + 2;
-                j < Math.min(
-                    i + 10,
-                    lines.length
+            const percentages =
+                findAllPercentageValuesAfterHeaders(
+                    lines,
+                    i
                 );
-                j++
+
+            if (
+                percentages.length
             ) {
-
-                const value =
-                    parsePercentage(
-                        lines[j]
-                    );
-
-                if (
-                    value !== null
-                ) {
-                    return value;
-                }
+                return percentages[0];
             }
-        }
-    }
-
-    // --------------------------------------------------------
-    // Full text fallback
-    // --------------------------------------------------------
-
-    const text =
-        lines.join(" ");
-
-    const match =
-        text.match(
-            /head\s*shot\s*accuracy\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*%?/i
-        );
-
-    if (match) {
-
-        const value =
-            parsePercentage(
-                match[1]
-            );
-
-        if (
-            value !== null
-        ) {
-            return value;
         }
     }
 
@@ -551,7 +540,227 @@ function findHeadshotAccuracy(lines) {
 
 
 // ============================================================
-// HELPERS
+// COD:M LAYOUT HELPERS
+// ============================================================
+
+function findValueFromMetricLayout(
+    lines,
+    metric
+) {
+
+    const headerIndexes = [];
+
+    const headerRegex =
+        /^(kills?|total\s*damage|accuracy|head\s*shot\s*accuracy|ttk|hit\s*distance)$/i;
+
+    for (
+        let i = 0;
+        i < lines.length;
+        i++
+    ) {
+
+        if (
+            headerRegex.test(
+                lines[i]
+            )
+        ) {
+
+            headerIndexes.push(i);
+        }
+    }
+
+    if (
+        headerIndexes.length < 4
+    ) {
+        return null;
+    }
+
+    const firstValueIndex =
+        headerIndexes[
+            headerIndexes.length - 1
+        ] + 1;
+
+    if (
+        firstValueIndex >= lines.length
+    ) {
+        return null;
+    }
+
+    const position =
+        headerIndexes.findIndex(
+            index =>
+                lines[index]
+                    .toLowerCase()
+                    .replace(/\s+/g, " ")
+                    .trim() ===
+                metric.toLowerCase()
+        );
+
+    if (
+        position === -1
+    ) {
+        return null;
+    }
+
+    const valueIndex =
+        firstValueIndex + position;
+
+    if (
+        valueIndex >= lines.length
+    ) {
+        return null;
+    }
+
+    return parseInteger(
+        lines[valueIndex]
+    );
+}
+
+
+// ============================================================
+// FIND PERCENTAGE VALUES
+// ============================================================
+
+function findPercentageValuesAfterHeaders(
+    lines,
+    startIndex
+) {
+
+    const values = [];
+
+    // Find the end of the metric-header block.
+    let headerEnd =
+        startIndex;
+
+    for (
+        let i = startIndex;
+        i < lines.length;
+        i++
+    ) {
+
+        if (
+            /^(kills?|total\s*damage|accuracy|head\s*shot\s*accuracy|ttk|hit\s*distance)$/i.test(
+                lines[i]
+            )
+        ) {
+
+            headerEnd = i;
+        } else {
+
+            // Once we leave the header block,
+            // start looking for percentage values.
+            if (
+                i > headerEnd
+            ) {
+                break;
+            }
+        }
+    }
+
+    for (
+        let i = headerEnd + 1;
+        i < lines.length;
+        i++
+    ) {
+
+        const value =
+            parsePercentage(
+                lines[i]
+            );
+
+        if (
+            value !== null
+        ) {
+
+            values.push(
+                value
+            );
+
+            if (
+                values.length >= 2
+            ) {
+                break;
+            }
+        }
+    }
+
+    return values;
+}
+
+
+function findPercentageValuesAfterHeaders(
+    lines,
+    accuracyIndex,
+    headshotIndex
+) {
+
+    const values = [];
+
+    // In the COD:M layout the complete header block
+    // ends at Hit Distance.
+    //
+    // Find the last known metric header after
+    // Headshot Accuracy.
+
+    const headerRegex =
+        /^(kills?|total\s*damage|accuracy|head\s*shot\s*accuracy|ttk|hit\s*distance)$/i;
+
+    let lastHeader =
+        headshotIndex;
+
+    for (
+        let i = headshotIndex + 1;
+        i < lines.length;
+        i++
+    ) {
+
+        if (
+            headerRegex.test(
+                lines[i]
+            )
+        ) {
+
+            lastHeader = i;
+
+        } else {
+
+            break;
+        }
+    }
+
+    for (
+        let i = lastHeader + 1;
+        i < lines.length;
+        i++
+    ) {
+
+        const value =
+            parsePercentage(
+                lines[i]
+            );
+
+        if (
+            value !== null
+        ) {
+
+            values.push(
+                value
+            );
+
+            if (
+                values.length >= 2
+            ) {
+                break;
+            }
+        }
+    }
+
+    return values;
+}
+
+
+// ============================================================
+// LINE SEARCH
 // ============================================================
 
 function findLineIndex(
@@ -579,7 +788,7 @@ function findLineIndex(
 
 
 // ============================================================
-// INTEGER PARSER
+// INTEGER
 // ============================================================
 
 function parseInteger(
@@ -591,7 +800,7 @@ function parseInteger(
     }
 
     const cleaned =
-        value
+        String(value)
             .replace(/,/g, "")
             .trim();
 
@@ -607,9 +816,7 @@ function parseInteger(
         Number(cleaned);
 
     if (
-        !Number.isInteger(
-            number
-        )
+        !Number.isInteger(number)
     ) {
         return null;
     }
@@ -626,14 +833,17 @@ function parseInteger(
 
 
 // ============================================================
-// PERCENTAGE PARSER
+// PERCENTAGE
 // ============================================================
 
 function parsePercentage(
     value
 ) {
 
-    if (!value) {
+    if (
+        value === null ||
+        value === undefined
+    ) {
         return null;
     }
 
@@ -642,6 +852,10 @@ function parsePercentage(
             .replace(",", ".")
             .replace("%", "")
             .trim();
+
+    if (!cleaned) {
+        return null;
+    }
 
     const number =
         Number(cleaned);
