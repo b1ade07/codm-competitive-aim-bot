@@ -87,28 +87,20 @@ export async function runOCR(imageUrl) {
 
 
     if (
-        contentType.includes(
-            "jpeg"
-        ) ||
-        contentType.includes(
-            "jpg"
-        )
+        contentType.includes("jpeg") ||
+        contentType.includes("jpg")
     ) {
 
         extension = "jpg";
 
     } else if (
-        contentType.includes(
-            "webp"
-        )
+        contentType.includes("webp")
     ) {
 
         extension = "webp";
 
     } else if (
-        contentType.includes(
-            "gif"
-        )
+        contentType.includes("gif")
     ) {
 
         extension = "gif";
@@ -168,7 +160,7 @@ export async function runOCR(imageUrl) {
 
 
     // --------------------------------------------------------
-    // SEND IMAGE DIRECTLY TO OCR.SPACE
+    // SEND IMAGE TO OCR.SPACE
     // --------------------------------------------------------
 
     console.log(
@@ -180,7 +172,8 @@ export async function runOCR(imageUrl) {
         await fetch(
             OCR_ENDPOINT,
             {
-                method: "POST",
+                method:
+                    "POST",
 
                 headers: {
                     apikey:
@@ -226,9 +219,7 @@ export async function runOCR(imageUrl) {
             Array.isArray(
                 data.ErrorMessage
             )
-                ? data.ErrorMessage.join(
-                    " "
-                )
+                ? data.ErrorMessage.join(" ")
                 : String(
                     data.ErrorMessage ||
                     "OCR processing failed."
@@ -257,9 +248,7 @@ export async function runOCR(imageUrl) {
                         result?.ParsedText ||
                         ""
                 )
-                .join(
-                    "\n"
-                )
+                .join("\n")
             : "";
 
 
@@ -284,15 +273,6 @@ export async function runOCR(imageUrl) {
 
     console.log(
         "OCR: Text successfully extracted."
-    );
-
-
-    // TEMPORARY DEBUG LOG
-    // This lets us see exactly what OCR.Space
-    // returned for the COD:M screenshot.
-
-    console.log(
-        "OCR RAW TEXT:\n" + text
     );
 
 
