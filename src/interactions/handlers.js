@@ -16,7 +16,9 @@ import {
 
 import {
     startSubmitDrill,
-    handleApproval
+    handleApproval,
+    handleOCRButton,
+    handleOCRModal
 } from "./submitDrill.js";
 
 import {
@@ -48,48 +50,47 @@ import {
 
 export async function handleInteraction(interaction) {
 
+    try {
 
-    // ========================================================
-    // SLASH COMMANDS
-    // ========================================================
+        // ========================================================
+        // SLASH COMMANDS
+        // ========================================================
 
-    if (interaction.isChatInputCommand()) {
+        if (interaction.isChatInputCommand()) {
 
-        const command =
-            interaction.commandName;
+            const command =
+                interaction.commandName;
 
 
-        // ====================================================
-        // /COMMANDS
-        // ====================================================
+            // ====================================================
+            // /COMMANDS
+            // ====================================================
 
-        if (command === "commands") {
+            if (command === "commands") {
 
-            const isAdmin =
-                interaction.memberPermissions?.has(
-                    PermissionFlagsBits.Administrator
-                );
+                const isAdmin =
+                    interaction.memberPermissions?.has(
+                        PermissionFlagsBits.Administrator
+                    );
 
-            let message = `
-**🎯 COD:M AIM DRILLS — COMMAND GUIDE**
 
-**NORMAL MEMBER COMMANDS**
+                let message = `
+
+**🎯 COD:M AIM DRILLS**
+
+**PLAYER COMMANDS**
 
 \`/setup-roles\`
-Register your permanent Primary and Secondary gun roles.
+Set your permanent Primary and Secondary gun roles.
 
 \`/roles\`
-View your registered gun roles.
+View your currently selected gun roles.
 
 \`/submit-drill\`
-Submit your AIM drill screenshot and manually enter:
-• Total Number of Kills
-• Accuracy
-• Headshot Accuracy
-• PRIMARY / SECONDARY
+Submit your COD:M aim drill screenshot.
 
 \`/leaderboard\`
-View the lifetime AIM DRILLS leaderboard.
+View the AIM DRILLS leaderboard.
 
 \`/stats\`
 View your lifetime AIM DRILLS statistics.
@@ -100,21 +101,27 @@ View today's drill progress.
 \`/streak\`
 View your current and longest streak.
 
+
 **DAILY TARGET**
 
 Primary: **2 drills**
+
 Secondary: **2 drills**
+
 Total: **4 drills**
 
 Daily cycle:
 **03:00 AM IST → 03:00 AM IST**
 
 Only approved drills count toward progress.
+
 `;
 
-            if (isAdmin) {
 
-                message += `
+                if (isAdmin) {
+
+                    message += `
+
 **🔐 ADMIN COMMANDS**
 
 \`/admin-approve\`
@@ -125,66 +132,347 @@ Reject a pending drill.
 
 \`/admin-user\`
 View a player's stored information.
+
 `;
 
-            }
+                }
 
-            return await interaction.reply({
-                content: message
-            });
-
-        }
-
-
-        // ====================================================
-        // /SETUP-ROLES
-        // ====================================================
-
-        if (command === "setup-roles") {
-
-            return await handleSetupRoles(
-                interaction
-            );
-
-        }
-
-
-        // ====================================================
-        // /ROLES
-        // ====================================================
-
-        if (command === "roles") {
-
-            return await showRoles(
-                interaction
-            );
-
-        }
-
-
-        // ====================================================
-        // AIM DRILLS CHANNEL CHECK
-        // ====================================================
-
-        if (
-            command === "submit-drill" ||
-            command === "leaderboard" ||
-            command === "stats" ||
-            command === "today" ||
-            command === "streak"
-        ) {
-
-            if (
-                interaction.channelId !==
-                config.aimDrillsChannelId
-            ) {
 
                 return await interaction.reply({
 
                     content:
-                        `THIS COMMAND CAN ONLY BE USED IN <#${config.aimDrillsChannelId}> 🎯`,
+                        message
 
-                    ephemeral: true
+                });
+
+            }
+
+
+            // ====================================================
+            // /SETUP-ROLES
+            // ====================================================
+
+            if (
+                command === "setup-roles"
+            ) {
+
+                return await handleSetupRoles(
+                    interaction
+                );
+
+            }
+
+
+            // ====================================================
+            // /ROLES
+            // ====================================================
+
+            if (
+                command === "roles"
+            ) {
+
+                return await showRoles(
+                    interaction
+                );
+
+            }
+
+
+            // ====================================================
+            // AIM DRILLS CHANNEL CHECK
+            // ====================================================
+
+            if (
+
+                command === "submit-drill" ||
+
+                command === "leaderboard" ||
+
+                command === "stats" ||
+
+                command === "today" ||
+
+                command === "streak"
+
+            ) {
+
+                if (
+
+                    interaction.channelId !==
+                    config.aimDrillsChannelId
+
+                ) {
+
+                    return await interaction.reply({
+
+                        content:
+                            `THIS COMMAND CAN ONLY BE USED IN <#${config.aimDrillsChannelId}> 🎯`,
+
+                        ephemeral:
+                            true
+
+                    });
+
+                }
+
+            }
+
+
+            // ====================================================
+            // /SUBMIT-DRILL
+            // ====================================================
+
+            if (
+                command === "submit-drill"
+            ) {
+
+                return await startSubmitDrill(
+                    interaction
+                );
+
+            }
+
+
+            // ====================================================
+            // /LEADERBOARD
+            // ====================================================
+
+            if (
+                command === "leaderboard"
+            ) {
+
+                return await startLeaderboard(
+                    interaction
+                );
+
+            }
+
+
+            // ====================================================
+            // /STATS
+            // ====================================================
+
+            if (
+                command === "stats"
+            ) {
+
+                return await showStats(
+                    interaction
+                );
+
+            }
+
+
+            // ====================================================
+            // /TODAY
+            // ====================================================
+
+            if (
+                command === "today"
+            ) {
+
+                return await showToday(
+                    interaction
+                );
+
+            }
+
+
+            // ====================================================
+            // /STREAK
+            // ====================================================
+
+            if (
+                command === "streak"
+            ) {
+
+                return await showStreak(
+                    interaction
+                );
+
+            }
+
+
+            // ====================================================
+            // ADMIN APPROVE
+            // ====================================================
+
+            if (
+                command === "admin-approve"
+            ) {
+
+                if (
+
+                    !interaction.memberPermissions?.has(
+
+                        PermissionFlagsBits.Administrator
+
+                    )
+
+                ) {
+
+                    return await interaction.reply({
+
+                        content:
+                            "❌ You do not have permission to use this command.",
+
+                        ephemeral:
+                            true
+
+                    });
+
+                }
+
+
+                const drillId =
+                    interaction.options.getInteger(
+                        "drill_id"
+                    );
+
+
+                const result =
+                    approveDrill(
+
+                        drillId,
+
+                        interaction.user.id
+
+                    );
+
+
+                return await interaction.reply({
+
+                    content:
+
+                        result?.message ||
+
+                        (
+
+                            result?.success
+
+                                ? "✅ Drill approved successfully."
+
+                                : "❌ Drill could not be approved."
+
+                        )
+
+                });
+
+            }
+
+
+            // ====================================================
+            // ADMIN REJECT
+            // ====================================================
+
+            if (
+                command === "admin-reject"
+            ) {
+
+                if (
+
+                    !interaction.memberPermissions?.has(
+
+                        PermissionFlagsBits.Administrator
+
+                    )
+
+                ) {
+
+                    return await interaction.reply({
+
+                        content:
+                            "❌ You do not have permission to use this command.",
+
+                        ephemeral:
+                            true
+
+                    });
+
+                }
+
+
+                const drillId =
+                    interaction.options.getInteger(
+                        "drill_id"
+                    );
+
+
+                const reason =
+                    interaction.options.getString(
+                        "reason"
+                    ) ||
+                    "Rejected by administrator.";
+
+
+                const result =
+                    rejectDrill(
+
+                        drillId,
+
+                        interaction.user.id,
+
+                        reason
+
+                    );
+
+
+                return await interaction.reply({
+
+                    content:
+
+                        result?.message ||
+
+                        (
+
+                            result?.success
+
+                                ? "❌ Drill rejected successfully."
+
+                                : "❌ Drill could not be rejected."
+
+                        )
+
+                });
+
+            }
+
+
+            // ====================================================
+            // ADMIN USER
+            // ====================================================
+
+            if (
+                command === "admin-user"
+            ) {
+
+                if (
+
+                    !interaction.memberPermissions?.has(
+
+                        PermissionFlagsBits.Administrator
+
+                    )
+
+                ) {
+
+                    return await interaction.reply({
+
+                        content:
+                            "❌ You do not have permission to use this command.",
+
+                        ephemeral:
+                            true
+
+                    });
+
+                }
+
+
+                return await interaction.reply({
+
+                    content:
+                        "Admin user information command is available through the existing admin system."
 
                 });
 
@@ -193,298 +481,222 @@ View a player's stored information.
         }
 
 
-        // ====================================================
-        // /SUBMIT-DRILL
-        // ====================================================
+        // ========================================================
+        // BUTTON INTERACTIONS
+        // ========================================================
 
-        if (command === "submit-drill") {
-
-            return await startSubmitDrill(
-                interaction
-            );
-
-        }
+        if (
+            interaction.isButton()
+        ) {
 
 
-        // ====================================================
-        // /LEADERBOARD
-        // ====================================================
-
-        if (command === "leaderboard") {
-
-            return await startLeaderboard(
-                interaction
-            );
-
-        }
-
-
-        // ====================================================
-        // /STATS
-        // ====================================================
-
-        if (command === "stats") {
-
-            return await showStats(
-                interaction
-            );
-
-        }
-
-
-        // ====================================================
-        // /TODAY
-        // ====================================================
-
-        if (command === "today") {
-
-            return await showToday(
-                interaction
-            );
-
-        }
-
-
-        // ====================================================
-        // /STREAK
-        // ====================================================
-
-        if (command === "streak") {
-
-            return await showStreak(
-                interaction
-            );
-
-        }
-
-
-        // ====================================================
-        // ADMIN APPROVE
-        // ====================================================
-
-        if (command === "admin-approve") {
+            // ----------------------------------------------------
+            // APPROVE DRILL
+            // ----------------------------------------------------
 
             if (
-                !interaction.memberPermissions?.has(
-                    PermissionFlagsBits.Administrator
+
+                interaction.customId.startsWith(
+                    "drill_approve:"
                 )
+
             ) {
 
-                return await interaction.reply({
-
-                    content:
-                        "❌ You do not have permission to use this command.",
-
-                    ephemeral: true
-
-                });
+                return await handleApproval(
+                    interaction
+                );
 
             }
 
-            const drillId =
-                interaction.options.getInteger(
-                    "drill_id"
-                );
 
-            const result =
-                approveDrill(
-                    drillId,
-                    interaction.user.id
-                );
-
-            return await interaction.reply({
-
-                content:
-                    result?.message ||
-                    (
-                        result?.success
-                            ? "✅ Drill approved successfully."
-                            : "❌ Drill could not be approved."
-                    ),
-
-                ephemeral: true
-
-            });
-
-        }
-
-
-        // ====================================================
-        // ADMIN REJECT
-        // ====================================================
-
-        if (command === "admin-reject") {
+            // ----------------------------------------------------
+            // OCR BUTTONS
+            // ----------------------------------------------------
 
             if (
-                !interaction.memberPermissions?.has(
-                    PermissionFlagsBits.Administrator
+
+                interaction.customId.startsWith(
+                    "drill_confirm_ocr:"
+                ) ||
+
+                interaction.customId.startsWith(
+                    "drill_correct_ocr:"
+                ) ||
+
+                interaction.customId.startsWith(
+                    "drill_cancel_ocr:"
+                ) ||
+
+                interaction.customId.startsWith(
+                    "drill_manual_ocr:"
                 )
+
             ) {
 
-                return await interaction.reply({
-
-                    content:
-                        "❌ You do not have permission to use this command.",
-
-                    ephemeral: true
-
-                });
+                return await handleOCRButton(
+                    interaction
+                );
 
             }
-
-            const drillId =
-                interaction.options.getInteger(
-                    "drill_id"
-                );
-
-            const result =
-                rejectDrill(
-                    drillId,
-                    interaction.user.id
-                );
-
-            return await interaction.reply({
-
-                content:
-                    result?.message ||
-                    (
-                        result?.success
-                            ? "✅ Drill rejected successfully."
-                            : "❌ Drill could not be rejected."
-                    ),
-
-                ephemeral: true
-
-            });
 
         }
 
 
-        // ====================================================
-        // ADMIN USER
-        // ====================================================
+        // ========================================================
+        // MODAL INTERACTIONS
+        // ========================================================
 
-        if (command === "admin-user") {
+        if (
+            interaction.isModalSubmit()
+        ) {
+
+
+            // ----------------------------------------------------
+            // OCR CORRECTION / MANUAL ENTRY
+            // ----------------------------------------------------
 
             if (
-                !interaction.memberPermissions?.has(
-                    PermissionFlagsBits.Administrator
+
+                interaction.customId.startsWith(
+                    "drill_correct_modal:"
+                ) ||
+
+                interaction.customId.startsWith(
+                    "drill_manual_modal:"
                 )
+
             ) {
 
-                return await interaction.reply({
+                return await handleOCRModal(
+                    interaction
+                );
+
+            }
+
+        }
+
+
+        // ========================================================
+        // STRING SELECT MENUS
+        // ========================================================
+
+        if (
+            interaction.isStringSelectMenu()
+        ) {
+
+
+            // ----------------------------------------------------
+            // PRIMARY ROLE
+            //
+            // Custom ID:
+            // primary_role_select:USER_ID
+            // ----------------------------------------------------
+
+            if (
+
+                interaction.customId.startsWith(
+                    "primary_role_select:"
+                )
+
+            ) {
+
+                return await handlePrimaryRole(
+                    interaction
+                );
+
+            }
+
+
+            // ----------------------------------------------------
+            // SECONDARY ROLE
+            //
+            // Custom ID:
+            // secondary_role_select:USER_ID:PRIMARY
+            // ----------------------------------------------------
+
+            if (
+
+                interaction.customId.startsWith(
+                    "secondary_role_select:"
+                )
+
+            ) {
+
+                return await handleSecondaryRole(
+                    interaction
+                );
+
+            }
+
+
+            // ----------------------------------------------------
+            // LEADERBOARD
+            // ----------------------------------------------------
+
+            if (
+
+                interaction.customId ===
+                "leaderboard_select"
+
+            ) {
+
+                return await showLeaderboard(
+                    interaction
+                );
+
+            }
+
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            "INTERACTION HANDLER ERROR:",
+            error
+        );
+
+
+        // --------------------------------------------------------
+        // SAFE ERROR RESPONSE
+        // --------------------------------------------------------
+
+        try {
+
+            if (
+                interaction.replied ||
+                interaction.deferred
+            ) {
+
+                await interaction.followUp({
 
                     content:
-                        "❌ You do not have permission to use this command.",
+                        "❌ **AN UNEXPECTED ERROR OCCURRED. PLEASE TRY AGAIN.**",
 
-                    ephemeral: true
+                    ephemeral:
+                        true
+
+                });
+
+            } else {
+
+                await interaction.reply({
+
+                    content:
+                        "❌ **AN UNEXPECTED ERROR OCCURRED. PLEASE TRY AGAIN.**",
+
+                    ephemeral:
+                        true
 
                 });
 
             }
 
-            const member =
-                interaction.options.getUser(
-                    "member"
-                );
+        } catch (responseError) {
 
-            return await interaction.reply({
-
-                content:
-                    `ADMIN USER LOOKUP FOR <@${member.id}> IS CURRENTLY BEING CONNECTED TO THE DATABASE.`,
-
-                ephemeral: true
-
-            });
-
-        }
-
-    }
-
-
-    // ========================================================
-    // BUTTON INTERACTIONS
-    // ========================================================
-
-    if (interaction.isButton()) {
-
-        // ----------------------------------------------------
-        // APPROVE DRILL
-        // ----------------------------------------------------
-
-        if (
-            interaction.customId.startsWith(
-                "drill_approve:"
-            )
-        ) {
-
-            return await handleApproval(
-                interaction
-            );
-
-        }
-
-    }
-
-
-    // ========================================================
-    // STRING SELECT MENUS
-    // ========================================================
-
-    if (interaction.isStringSelectMenu()) {
-
-
-        // ----------------------------------------------------
-        // PRIMARY ROLE
-        //
-        // Custom ID:
-        // primary_role_select:USER_ID
-        // ----------------------------------------------------
-
-        if (
-            interaction.customId.startsWith(
-                "primary_role_select:"
-            )
-        ) {
-
-            return await handlePrimaryRole(
-                interaction
-            );
-
-        }
-
-
-        // ----------------------------------------------------
-        // SECONDARY ROLE
-        //
-        // Custom ID:
-        // secondary_role_select:USER_ID:PRIMARY
-        // ----------------------------------------------------
-
-        if (
-            interaction.customId.startsWith(
-                "secondary_role_select:"
-            )
-        ) {
-
-            return await handleSecondaryRole(
-                interaction
-            );
-
-        }
-
-
-        // ----------------------------------------------------
-        // LEADERBOARD
-        // ----------------------------------------------------
-
-        if (
-            interaction.customId ===
-            "leaderboard_select"
-        ) {
-
-            return await showLeaderboard(
-                interaction
+            console.error(
+                "ERROR RESPONSE FAILED:",
+                responseError
             );
 
         }
