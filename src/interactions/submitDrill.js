@@ -1,598 +1,1815 @@
 import {
-    PermissionFlagsBits
+    ButtonBuilder,
+    ButtonStyle,
+    ActionRowBuilder,
+    EmbedBuilder,
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle
 } from "discord.js";
 
-import { config } from "../config.js";
-
 import {
-    handleSetupRoles,
-    handlePrimaryRole,
-    handleSecondaryRole
-} from "../commands/setupRoles.js";
-
-import {
-    showRoles
-} from "../commands/roles.js";
-
-import {
-    startSubmitDrill,
-    handleApproval,
-    handleOCRButton,
-    handleOCRModal
-} from "./submitDrill.js";
-
-import {
-    startLeaderboard,
-    showLeaderboard
-} from "../commands/leaderboard.js";
-
-import {
-    showStats
-} from "../commands/stats.js";
-
-import {
-    showToday
-} from "../commands/today.js";
-
-import {
-    showStreak
-} from "../commands/streak.js";
-
-import {
+    getUser,
+    submitDrill,
     approveDrill,
-    rejectDrill
+    getDailyProgress,
+    getDrill,
+    getLastDrill
 } from "../services/drillService.js";
 
+import {
+    validateKills,
+    validatePercentage,
+    isImageAttachment
+} from "../utils/validation.js";
+
+import { runOCR } from "../ocr/ocrService.js";
+import { parseCodmStats } from "../ocr/codmParser.js";
+
+import database from "../database/database.js";
+
 
 // ============================================================
-// MAIN INTERACTION HANDLER
+// TEMPORARY OCR SESSION STORAGE
 // ============================================================
 
-export async function handleInteraction(
-    interaction
+const pendingOCR = new Map();
+
+
+// ============================================================
+// /submit-drill
+// ============================================================
+
+export async function startSubmitDrill(interaction) {
+
+    try {
+
+        const userId = interaction.user.id;
+
+        const user = getUser(userId);
+
+        if (
+            !user ||
+            !user.primary_role ||
+            !user.secondary_role
+        ) {
+
+            return await interaction.reply({
+                content:
+                    "❌ **PLEASE COMPLETE /SETUP-ROLES FIRST.**",
+                ephemeral: true
+            });
+
+        }
+
+
+        // ----------------------------------------------------
+        // COMMAND OPTIONS
+        // ----------------------------------------------------
+
+        const screenshot =
+            interaction.options.getAttachment("screenshot");
+
+        const manualKills =
+            interaction.options.getInteger("total_kills");
+
+        const manualAccuracy =
+            interaction.options.getNumber("accuracy");
+
+        const manualHeadshotAccuracy =
+            interaction.options.getNumber("headshot_accuracy");
+
+        const drillType =
+            interaction.options.getString("drill_type");
+
+
+        // ----------------------------------------------------
+        // SCREENSHOT VALIDATION
+        // ----------------------------------------------------
+
+        if (
+            !screenshot ||
+            !isImageAttachment(screenshot)
+        ) {
+
+            return await interaction.reply({
+                content:
+                    "❌ **PLEASE UPLOAD A VALID IMAGE SCREENSHOT.**",
+                ephemeral: true
+            });
+
+        }
+
+
+        // ----------------------------------------------------
+        // DRILL TYPE VALIDATION
+        // ----------------------------------------------------
+
+        if (
+            drillType !== "PRIMARY" &&
+            drillType !== "SECONDARY"
+        ) {
+
+            return await interaction.reply({
+                content:
+                    "❌ **DRILL TYPE MUST BE PRIMARY OR SECONDARY.**",
+                ephemeral: true
+            });
+
+        }
+
+
+        // ----------------------------------------------------
+        // GET PERMANENT GUN ROLE
+        // ----------------------------------------------------
+
+        const gunRole =
+            drillType === "PRIMARY"
+                ? user.primary_role
+                : user.secondary_role;
+
+
+        // ----------------------------------------------------
+        // FULL MANUAL ENTRY
+        // ----------------------------------------------------
+
+        if (
+            manualKills !== null &&
+            manualAccuracy !== null &&
+            manualHeadshotAccuracy !== null
+        ) {
+
+            if (!validateKills(manualKills)) {
+
+                return await interaction.reply({
+                    content:
+                        "❌ **TOTAL NUMBER OF KILLS MUST BE A VALID WHOLE NUMBER.**",
+                    ephemeral: true
+                });
+
+            }
+
+            if (!validatePercentage(manualAccuracy)) {
+
+                return await interaction.reply({
+                    content:
+                        "❌ **ACCURACY MUST BE BETWEEN 0 AND 100.**",
+                    ephemeral: true
+                });
+
+            }
+
+            if (!validatePercentage(manualHeadshotAccuracy)) {
+
+                return await interaction.reply({
+                    content:
+                        "❌ **HEADSHOT ACCURACY MUST BE BETWEEN 0 AND 100.**",
+                    ephemeral: true
+                });
+
+            }
+
+            return await createSubmission(
+                interaction,
+                {
+                    userId,
+                    screenshot,
+                    drillType,
+                    gunRole,
+                    totalKills: manualKills,
+                    accuracy: manualAccuracy,
+                    headshotAccuracy: manualHeadshotAccuracy
+                }
+            );
+
+        }
+
+
+        // ----------------------------------------------------
+        // OCR
+        // ----------------------------------------------------
+
+        await interaction.deferReply({
+            ephemeral: true
+        });
+
+        await interaction.editReply({
+            content:
+                "🔍 **READING YOUR COD:M SCREENSHOT...**\n\n" +
+                "Please wait..."
+        });
+
+
+        let stats;
+
+        try {
+
+            const ocrResult =
+                await runOCR(screenshot.url);
+
+            stats =
+                parseCodmStats(ocrResult.text);
+
+        } catch (error) {
+
+            console.error(
+                "COD:M OCR FAILED:",
+                error
+            );
+
+
+            // ------------------------------------------------
+            // OCR FAILED
+            // ------------------------------------------------
+
+            const token =
+                createToken();
+
+
+            pendingOCR.set(token, {
+
+                userId,
+
+                screenshot,
+
+                drillType,
+
+                gunRole
+
+            });
+
+
+            const manualButton =
+                new ButtonBuilder()
+
+                    .setCustomId(
+                        `drill_manual_ocr:${token}`
+                    )
+
+                    .setLabel(
+                        "ENTER VALUES MANUALLY"
+                    )
+
+                    .setEmoji(
+                        "✏️"
+                    )
+
+                    .setStyle(
+                        ButtonStyle.Primary
+                    );
+
+
+            const row =
+                new ActionRowBuilder()
+                    .addComponents(
+                        manualButton
+                    );
+
+
+            return await interaction.editReply({
+
+                content:
+
+                    "⚠️ **I COULDN'T READ THE COD:M STATISTICS.**\n\n" +
+
+                    "You can enter the values manually.",
+
+                components: [
+                    row
+                ]
+
+            });
+
+        }
+
+
+        // ----------------------------------------------------
+        // STORE OCR SESSION
+        // ----------------------------------------------------
+
+        const token =
+            createToken();
+
+
+        pendingOCR.set(token, {
+
+            userId,
+
+            screenshot,
+
+            drillType,
+
+            gunRole,
+
+            totalKills:
+                stats.kills,
+
+            accuracy:
+                stats.accuracy,
+
+            headshotAccuracy:
+                stats.headshotAccuracy
+
+        });
+
+
+        // ----------------------------------------------------
+        // OCR CONFIRMATION BUTTONS
+        // ----------------------------------------------------
+
+        const confirmButton =
+            new ButtonBuilder()
+
+                .setCustomId(
+                    `drill_confirm_ocr:${token}`
+                )
+
+                .setLabel(
+                    "CONFIRM"
+                )
+
+                .setEmoji(
+                    "✅"
+                )
+
+                .setStyle(
+                    ButtonStyle.Success
+                );
+
+
+        const correctButton =
+            new ButtonBuilder()
+
+                .setCustomId(
+                    `drill_correct_ocr:${token}`
+                )
+
+                .setLabel(
+                    "CORRECT VALUES"
+                )
+
+                .setEmoji(
+                    "✏️"
+                )
+
+                .setStyle(
+                    ButtonStyle.Primary
+                );
+
+
+        const cancelButton =
+            new ButtonBuilder()
+
+                .setCustomId(
+                    `drill_cancel_ocr:${token}`
+                )
+
+                .setLabel(
+                    "CANCEL"
+                )
+
+                .setEmoji(
+                    "❌"
+                )
+
+                .setStyle(
+                    ButtonStyle.Danger
+                );
+
+
+        const row =
+            new ActionRowBuilder()
+                .addComponents(
+                    confirmButton,
+                    correctButton,
+                    cancelButton
+                );
+
+
+        // ----------------------------------------------------
+        // SHOW OCR RESULTS
+        // ----------------------------------------------------
+
+        return await interaction.editReply({
+
+            content:
+
+                "🔍 **OCR COMPLETE**\n\n" +
+
+                `🎯 **Kills:** ${stats.kills}\n` +
+
+                `📈 **Accuracy:** ${stats.accuracy.toFixed(2)}%\n` +
+
+                `🎯 **Headshot Accuracy:** ${stats.headshotAccuracy.toFixed(2)}%\n\n` +
+
+                "**Are these values correct?**",
+
+            components: [
+                row
+            ]
+
+        });
+
+
+    } catch (error) {
+
+        console.error(
+            "SUBMIT DRILL ERROR:",
+            error
+        );
+
+
+        if (
+            !interaction.replied &&
+            !interaction.deferred
+        ) {
+
+            return await interaction.reply({
+
+                content:
+                    "❌ **AN ERROR OCCURRED WHILE PROCESSING YOUR DRILL.**",
+
+                ephemeral:
+                    true
+
+            });
+
+        }
+
+    }
+
+}
+
+
+// ============================================================
+// OCR BUTTON HANDLER
+// ============================================================
+
+export async function handleOCRButton(interaction) {
+
+    try {
+
+        const parts =
+            interaction.customId.split(":");
+
+        const action =
+            parts[0];
+
+        const token =
+            parts[1];
+
+
+        const data =
+            pendingOCR.get(token);
+
+
+        if (!data) {
+
+            return await interaction.reply({
+
+                content:
+                    "❌ **THIS OCR SESSION HAS EXPIRED. PLEASE SUBMIT THE SCREENSHOT AGAIN.**",
+
+                ephemeral:
+                    true
+
+            });
+
+        }
+
+
+        // ----------------------------------------------------
+        // SECURITY
+        // ----------------------------------------------------
+
+        if (
+            interaction.user.id !== data.userId
+        ) {
+
+            return await interaction.reply({
+
+                content:
+                    "❌ **THIS OCR SESSION BELONGS TO ANOTHER PLAYER.**",
+
+                ephemeral:
+                    true
+
+            });
+
+        }
+
+
+        // ----------------------------------------------------
+        // CANCEL
+        // ----------------------------------------------------
+
+        if (
+            action === "drill_cancel_ocr"
+        ) {
+
+            pendingOCR.delete(token);
+
+            return await interaction.update({
+
+                content:
+                    "❌ **DRILL SUBMISSION CANCELLED.**",
+
+                components:
+                    []
+
+            });
+
+        }
+
+
+        // ----------------------------------------------------
+        // CONFIRM OCR
+        // ----------------------------------------------------
+
+        if (
+            action === "drill_confirm_ocr"
+        ) {
+
+            pendingOCR.delete(token);
+
+
+            await interaction.update({
+
+                content:
+                    "✅ **VALUES CONFIRMED. SAVING YOUR DRILL...**",
+
+                components:
+                    []
+
+            });
+
+
+            return await createSubmission(
+                interaction,
+                data
+            );
+
+        }
+
+
+        // ----------------------------------------------------
+        // CORRECT OCR VALUES
+        // ----------------------------------------------------
+
+        if (
+            action === "drill_correct_ocr"
+        ) {
+
+            const modal =
+                new ModalBuilder()
+
+                    .setCustomId(
+                        `drill_correct_modal:${token}`
+                    )
+
+                    .setTitle(
+                        "Correct COD:M Statistics"
+                    );
+
+
+            const killsInput =
+                new TextInputBuilder()
+
+                    .setCustomId(
+                        "kills"
+                    )
+
+                    .setLabel(
+                        "Total Kills"
+                    )
+
+                    .setStyle(
+                        TextInputStyle.Short
+                    )
+
+                    .setPlaceholder(
+                        String(data.totalKills)
+                    )
+
+                    .setRequired(
+                        true
+                    );
+
+
+            const accuracyInput =
+                new TextInputBuilder()
+
+                    .setCustomId(
+                        "accuracy"
+                    )
+
+                    .setLabel(
+                        "Accuracy (%)"
+                    )
+
+                    .setStyle(
+                        TextInputStyle.Short
+                    )
+
+                    .setPlaceholder(
+                        String(data.accuracy)
+                    )
+
+                    .setRequired(
+                        true
+                    );
+
+
+            const headshotInput =
+                new TextInputBuilder()
+
+                    .setCustomId(
+                        "headshot_accuracy"
+                    )
+
+                    .setLabel(
+                        "Headshot Accuracy (%)"
+                    )
+
+                    .setStyle(
+                        TextInputStyle.Short
+                    )
+
+                    .setPlaceholder(
+                        String(data.headshotAccuracy)
+                    )
+
+                    .setRequired(
+                        true
+                    );
+
+
+            modal.addComponents(
+
+                new ActionRowBuilder()
+                    .addComponents(
+                        killsInput
+                    ),
+
+                new ActionRowBuilder()
+                    .addComponents(
+                        accuracyInput
+                    ),
+
+                new ActionRowBuilder()
+                    .addComponents(
+                        headshotInput
+                    )
+
+            );
+
+
+            return await interaction.showModal(
+                modal
+            );
+
+        }
+
+
+        // ----------------------------------------------------
+        // MANUAL OCR ENTRY
+        // ----------------------------------------------------
+
+        if (
+            action === "drill_manual_ocr"
+        ) {
+
+            const modal =
+                new ModalBuilder()
+
+                    .setCustomId(
+                        `drill_manual_modal:${token}`
+                    )
+
+                    .setTitle(
+                        "Enter COD:M Statistics"
+                    );
+
+
+            const killsInput =
+                new TextInputBuilder()
+
+                    .setCustomId(
+                        "kills"
+                    )
+
+                    .setLabel(
+                        "Total Kills"
+                    )
+
+                    .setStyle(
+                        TextInputStyle.Short
+                    )
+
+                    .setRequired(
+                        true
+                    );
+
+
+            const accuracyInput =
+                new TextInputBuilder()
+
+                    .setCustomId(
+                        "accuracy"
+                    )
+
+                    .setLabel(
+                        "Accuracy (%)"
+                    )
+
+                    .setStyle(
+                        TextInputStyle.Short
+                    )
+
+                    .setRequired(
+                        true
+                    );
+
+
+            const headshotInput =
+                new TextInputBuilder()
+
+                    .setCustomId(
+                        "headshot_accuracy"
+                    )
+
+                    .setLabel(
+                        "Headshot Accuracy (%)"
+                    )
+
+                    .setStyle(
+                        TextInputStyle.Short
+                    )
+
+                    .setRequired(
+                        true
+                    );
+
+
+            modal.addComponents(
+
+                new ActionRowBuilder()
+                    .addComponents(
+                        killsInput
+                    ),
+
+                new ActionRowBuilder()
+                    .addComponents(
+                        accuracyInput
+                    ),
+
+                new ActionRowBuilder()
+                    .addComponents(
+                        headshotInput
+                    )
+
+            );
+
+
+            return await interaction.showModal(
+                modal
+            );
+
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            "OCR BUTTON ERROR:",
+            error
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// OCR MODAL HANDLER
+// ============================================================
+
+export async function handleOCRModal(interaction) {
+
+    try {
+
+        const parts =
+            interaction.customId.split(":");
+
+        const token =
+            parts[1];
+
+
+        const data =
+            pendingOCR.get(token);
+
+
+        if (!data) {
+
+            return await interaction.reply({
+
+                content:
+                    "❌ **THIS OCR SESSION HAS EXPIRED. PLEASE SUBMIT AGAIN.**",
+
+                ephemeral:
+                    true
+
+            });
+
+        }
+
+
+        if (
+            interaction.user.id !== data.userId
+        ) {
+
+            return await interaction.reply({
+
+                content:
+                    "❌ **THIS SUBMISSION BELONGS TO ANOTHER PLAYER.**",
+
+                ephemeral:
+                    true
+
+            });
+
+        }
+
+
+        const totalKills =
+            Number(
+                interaction.fields.getTextInputValue(
+                    "kills"
+                )
+            );
+
+
+        const accuracy =
+            Number(
+                interaction.fields.getTextInputValue(
+                    "accuracy"
+                )
+            );
+
+
+        const headshotAccuracy =
+            Number(
+                interaction.fields.getTextInputValue(
+                    "headshot_accuracy"
+                )
+            );
+
+
+        if (
+            !validateKills(totalKills)
+        ) {
+
+            return await interaction.reply({
+
+                content:
+                    "❌ **TOTAL KILLS MUST BE A VALID WHOLE NUMBER.**",
+
+                ephemeral:
+                    true
+
+            });
+
+        }
+
+
+        if (
+            !validatePercentage(accuracy)
+        ) {
+
+            return await interaction.reply({
+
+                content:
+                    "❌ **ACCURACY MUST BE BETWEEN 0 AND 100.**",
+
+                ephemeral:
+                    true
+
+            });
+
+        }
+
+
+        if (
+            !validatePercentage(headshotAccuracy)
+        ) {
+
+            return await interaction.reply({
+
+                content:
+                    "❌ **HEADSHOT ACCURACY MUST BE BETWEEN 0 AND 100.**",
+
+                ephemeral:
+                    true
+
+            });
+
+        }
+
+
+        pendingOCR.delete(token);
+
+
+        return await createSubmission(
+
+            interaction,
+
+            {
+
+                ...data,
+
+                totalKills,
+
+                accuracy,
+
+                headshotAccuracy
+
+            }
+
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "OCR MODAL ERROR:",
+            error
+        );
+
+
+        return await interaction.reply({
+
+            content:
+                "❌ **COULD NOT PROCESS THE VALUES.**",
+
+            ephemeral:
+                true
+
+        });
+
+    }
+
+}
+
+
+// ============================================================
+// DATABASE SUBMISSION
+// ============================================================
+
+async function createSubmission(
+    interaction,
+    data
 ) {
 
-    // ========================================================
-    // SLASH COMMANDS
-    // ========================================================
+    const {
+
+        userId,
+
+        screenshot,
+
+        drillType,
+
+        gunRole,
+
+        totalKills,
+
+        accuracy,
+
+        headshotAccuracy
+
+    } = data;
+
+
+    // --------------------------------------------------------
+    // VALIDATION
+    // --------------------------------------------------------
 
     if (
-        interaction.isChatInputCommand()
+        !validateKills(totalKills)
     ) {
 
-        const command =
-            interaction.commandName;
+        return await sendError(
 
+            interaction,
 
-        // ====================================================
-        // /COMMANDS
-        // ====================================================
+            "❌ **TOTAL NUMBER OF KILLS MUST BE A VALID WHOLE NUMBER.**"
 
-        if (
-            command === "commands"
-        ) {
-
-            const isAdmin =
-                interaction.memberPermissions?.has(
-                    PermissionFlagsBits.Administrator
-                );
-
-            let message = `
-**🎯 COD:M AIM DRILLS — COMMAND GUIDE**
-
-**NORMAL MEMBER COMMANDS**
-
-\`/setup-roles\`
-Register your permanent Primary and Secondary gun roles.
-
-\`/roles\`
-View your registered gun roles.
-
-\`/submit-drill\`
-Submit your AIM drill screenshot and manually enter:
-• Total Number of Kills
-• Accuracy
-• Headshot Accuracy
-• PRIMARY / SECONDARY
-
-\`/leaderboard\`
-View the lifetime AIM DRILLS leaderboard.
-
-\`/stats\`
-View your lifetime AIM DRILLS statistics.
-
-\`/today\`
-View today's drill progress.
-
-\`/streak\`
-View your current and longest streak.
-
-**DAILY TARGET**
-
-Primary: **2 drills**
-Secondary: **2 drills**
-Total: **4 drills**
-
-Daily cycle:
-**03:00 AM IST → 03:00 AM IST**
-
-Only approved drills count toward progress.
-`;
-
-            if (isAdmin) {
-
-                message += `
-**🔐 ADMIN COMMANDS**
-
-\`/admin-approve\`
-Approve a pending drill.
-
-\`/admin-reject\`
-Reject a pending drill.
-
-\`/admin-user\`
-View a player's stored information.
-`;
-
-            }
-
-            return await interaction.reply({
-                content: message
-            });
-
-        }
-
-
-        // ====================================================
-        // /SETUP-ROLES
-        // ====================================================
-
-        if (
-            command === "setup-roles"
-        ) {
-
-            return await handleSetupRoles(
-                interaction
-            );
-
-        }
-
-
-        // ====================================================
-        // /ROLES
-        // ====================================================
-
-        if (
-            command === "roles"
-        ) {
-
-            return await showRoles(
-                interaction
-            );
-
-        }
-
-
-        // ====================================================
-        // AIM DRILLS CHANNEL CHECK
-        // ====================================================
-
-        if (
-            command === "submit-drill" ||
-            command === "leaderboard" ||
-            command === "stats" ||
-            command === "today" ||
-            command === "streak"
-        ) {
-
-            if (
-                interaction.channelId !==
-                config.aimDrillsChannelId
-            ) {
-
-                return await interaction.reply({
-
-                    content:
-                        `THIS COMMAND CAN ONLY BE USED IN <#${config.aimDrillsChannelId}> 🎯`,
-
-                    ephemeral: true
-
-                });
-
-            }
-
-        }
-
-
-        // ====================================================
-        // /SUBMIT-DRILL
-        // ====================================================
-
-        if (
-            command === "submit-drill"
-        ) {
-
-            return await startSubmitDrill(
-                interaction
-            );
-
-        }
-
-
-        // ====================================================
-        // /LEADERBOARD
-        // ====================================================
-
-        if (
-            command === "leaderboard"
-        ) {
-
-            return await startLeaderboard(
-                interaction
-            );
-
-        }
-
-
-        // ====================================================
-        // /STATS
-        // ====================================================
-
-        if (
-            command === "stats"
-        ) {
-
-            return await showStats(
-                interaction
-            );
-
-        }
-
-
-        // ====================================================
-        // /TODAY
-        // ====================================================
-
-        if (
-            command === "today"
-        ) {
-
-            return await showToday(
-                interaction
-            );
-
-        }
-
-
-        // ====================================================
-        // /STREAK
-        // ====================================================
-
-        if (
-            command === "streak"
-        ) {
-
-            return await showStreak(
-                interaction
-            );
-
-        }
-
-
-        // ====================================================
-        // ADMIN APPROVE
-        // ====================================================
-
-        if (
-            command === "admin-approve"
-        ) {
-
-            if (
-                !interaction.memberPermissions?.has(
-                    PermissionFlagsBits.Administrator
-                )
-            ) {
-
-                return await interaction.reply({
-
-                    content:
-                        "❌ You do not have permission to use this command.",
-
-                    ephemeral: true
-
-                });
-
-            }
-
-            const drillId =
-                interaction.options.getInteger(
-                    "drill_id"
-                );
-
-            const result =
-                approveDrill(
-                    drillId,
-                    interaction.user.id
-                );
-
-            return await interaction.reply({
-
-                content:
-                    result?.message ||
-                    (
-                        result?.success
-                            ? "✅ Drill approved successfully."
-                            : "❌ Drill could not be approved."
-                    ),
-
-                ephemeral: true
-
-            });
-
-        }
-
-
-        // ====================================================
-        // ADMIN REJECT
-        // ====================================================
-
-        if (
-            command === "admin-reject"
-        ) {
-
-            if (
-                !interaction.memberPermissions?.has(
-                    PermissionFlagsBits.Administrator
-                )
-            ) {
-
-                return await interaction.reply({
-
-                    content:
-                        "❌ You do not have permission to use this command.",
-
-                    ephemeral: true
-
-                });
-
-            }
-
-            const drillId =
-                interaction.options.getInteger(
-                    "drill_id"
-                );
-
-            const result =
-                rejectDrill(
-                    drillId,
-                    interaction.user.id
-                );
-
-            return await interaction.reply({
-
-                content:
-                    result?.message ||
-                    (
-                        result?.success
-                            ? "✅ Drill rejected successfully."
-                            : "❌ Drill could not be rejected."
-                    ),
-
-                ephemeral: true
-
-            });
-
-        }
-
-
-        // ====================================================
-        // ADMIN USER
-        // ====================================================
-
-        if (
-            command === "admin-user"
-        ) {
-
-            if (
-                !interaction.memberPermissions?.has(
-                    PermissionFlagsBits.Administrator
-                )
-            ) {
-
-                return await interaction.reply({
-
-                    content:
-                        "❌ You do not have permission to use this command.",
-
-                    ephemeral: true
-
-                });
-
-            }
-
-            const member =
-                interaction.options.getUser(
-                    "member"
-                );
-
-            return await interaction.reply({
-
-                content:
-                    `ADMIN USER LOOKUP FOR <@${member.id}> IS CURRENTLY BEING CONNECTED TO THE DATABASE.`,
-
-                ephemeral: true
-
-            });
-
-        }
+        );
 
     }
 
 
-    // ========================================================
-    // BUTTON INTERACTIONS
-    // ========================================================
-
     if (
-        interaction.isButton()
+        !validatePercentage(accuracy)
     ) {
 
+        return await sendError(
 
-        // ----------------------------------------------------
-        // OCR BUTTONS
-        // ----------------------------------------------------
-        //
-        // drill_confirm_ocr:TOKEN
-        // drill_correct_ocr:TOKEN
-        // drill_cancel_ocr:TOKEN
-        // drill_manual_ocr:TOKEN
-        // ----------------------------------------------------
+            interaction,
 
-        if (
-            interaction.customId.startsWith(
-                "drill_confirm_ocr:"
-            ) ||
-            interaction.customId.startsWith(
-                "drill_correct_ocr:"
-            ) ||
-            interaction.customId.startsWith(
-                "drill_cancel_ocr:"
-            ) ||
-            interaction.customId.startsWith(
-                "drill_manual_ocr:"
-            )
-        ) {
+            "❌ **ACCURACY MUST BE BETWEEN 0 AND 100.**"
 
-            return await handleOCRButton(
-                interaction
-            );
-
-        }
-
-
-        // ----------------------------------------------------
-        // APPROVE DRILL
-        // ----------------------------------------------------
-
-        if (
-            interaction.customId.startsWith(
-                "drill_approve:"
-            )
-        ) {
-
-            return await handleApproval(
-                interaction
-            );
-
-        }
+        );
 
     }
 
 
-    // ========================================================
-    // MODAL SUBMISSIONS
-    // ========================================================
-
     if (
-        interaction.isModalSubmit()
+        !validatePercentage(headshotAccuracy)
     ) {
 
-        // ----------------------------------------------------
-        // OCR CORRECTION / MANUAL ENTRY
-        // ----------------------------------------------------
+        return await sendError(
 
-        if (
-            interaction.customId.startsWith(
-                "drill_correct_modal:"
-            ) ||
-            interaction.customId.startsWith(
-                "drill_manual_modal:"
-            )
-        ) {
+            interaction,
 
-            return await handleOCRModal(
-                interaction
-            );
+            "❌ **HEADSHOT ACCURACY MUST BE BETWEEN 0 AND 100.**"
 
-        }
+        );
 
     }
 
 
-    // ========================================================
-    // STRING SELECT MENUS
-    // ========================================================
+    // --------------------------------------------------------
+    // DATABASE
+    // --------------------------------------------------------
+
+    const result =
+        submitDrill({
+
+            discordId:
+                userId,
+
+            roleType:
+                drillType,
+
+            gunRole:
+                gunRole,
+
+            kills:
+                totalKills,
+
+            accuracy:
+                Number(accuracy),
+
+            headshotAccuracy:
+                Number(headshotAccuracy),
+
+            screenshotUrl:
+                screenshot.url,
+
+            screenshotMessageId:
+                null,
+
+            screenshotChannelId:
+                interaction.channelId
+
+        });
+
+
+    // --------------------------------------------------------
+    // DATABASE ERRORS
+    // --------------------------------------------------------
 
     if (
-        interaction.isStringSelectMenu()
+        !result ||
+        !result.success
     ) {
 
-
-        // ----------------------------------------------------
-        // PRIMARY ROLE
-        //
-        // Custom ID:
-        // primary_role_select:USER_ID
-        // ----------------------------------------------------
-
         if (
-            interaction.customId.startsWith(
-                "primary_role_select:"
-            )
+            result?.reason === "DUPLICATE"
         ) {
 
-            return await handlePrimaryRole(
-                interaction
-            );
+            return await sendError(
 
-        }
-
-
-        // ----------------------------------------------------
-        // SECONDARY ROLE
-        //
-        // Custom ID:
-        // secondary_role_select:USER_ID:PRIMARY
-        // ----------------------------------------------------
-
-        if (
-            interaction.customId.startsWith(
-                "secondary_role_select:"
-            )
-        ) {
-
-            return await handleSecondaryRole(
-                interaction
-            );
-
-        }
-
-
-        // ----------------------------------------------------
-        // LEADERBOARD
-        //
-        // Custom ID:
-        // leaderboard:USER_ID
-        //
-        // Selected value:
-        // kills
-        // accuracy
-        // headshot_accuracy
-        // ----------------------------------------------------
-
-        if (
-            interaction.customId.startsWith(
-                "leaderboard:"
-            )
-        ) {
-
-            return await showLeaderboard(
                 interaction,
-                interaction.values[0]
+
+                "❌ **THIS DRILL HAS ALREADY BEEN SUBMITTED.**"
+
             );
 
         }
 
+
+        if (
+            result?.reason === "PRIMARY_LIMIT"
+        ) {
+
+            return await sendError(
+
+                interaction,
+
+                "❌ **YOU HAVE ALREADY REACHED YOUR PRIMARY DRILL LIMIT OF 2 FOR TODAY.**"
+
+            );
+
+        }
+
+
+        if (
+            result?.reason === "SECONDARY_LIMIT"
+        ) {
+
+            return await sendError(
+
+                interaction,
+
+                "❌ **YOU HAVE ALREADY REACHED YOUR SECONDARY DRILL LIMIT OF 2 FOR TODAY.**"
+
+            );
+
+        }
+
+
+        return await sendError(
+
+            interaction,
+
+            "❌ **DRILL COULD NOT BE SUBMITTED.**"
+
+        );
+
     }
+
+
+    // --------------------------------------------------------
+    // PREVIOUS DRILL
+    // --------------------------------------------------------
+
+    const previous =
+        getLastDrill(userId);
+
+
+    // --------------------------------------------------------
+    // LIFETIME STATS
+    // --------------------------------------------------------
+
+    const lifetime =
+        getLifetimeStatsLocal(userId);
+
+
+    // --------------------------------------------------------
+    // IMPROVEMENT
+    // --------------------------------------------------------
+
+    let improvement = null;
+
+
+    if (previous) {
+
+        improvement = {
+
+            kills:
+                totalKills -
+                Number(previous.kills),
+
+            accuracy:
+                Number(accuracy) -
+                Number(previous.accuracy),
+
+            headshotAccuracy:
+                Number(headshotAccuracy) -
+                Number(previous.headshot_accuracy)
+
+        };
+
+    }
+
+
+    // --------------------------------------------------------
+    // EMBED
+    // --------------------------------------------------------
+
+    const embed =
+        new EmbedBuilder()
+
+            .setTitle(
+                "🎯 AIM DRILL SUBMISSION"
+            )
+
+            .setDescription(
+
+                `**PLAYER:** <@${userId}>\n` +
+
+                `**DRILL TYPE:** ${drillType}\n` +
+
+                `**GUN ROLE:** ${gunRole}\n` +
+
+                `**STATUS:** ⏳ PENDING APPROVAL`
+
+            )
+
+            .addFields(
+
+                {
+
+                    name:
+                        "🎯 TOTAL KILLS",
+
+                    value:
+                        `${totalKills}`,
+
+                    inline:
+                        true
+
+                },
+
+                {
+
+                    name:
+                        "📈 ACCURACY",
+
+                    value:
+                        `${Number(accuracy).toFixed(2)}%`,
+
+                    inline:
+                        true
+
+                },
+
+                {
+
+                    name:
+                        "🎯 HEADSHOT ACCURACY",
+
+                    value:
+                        `${Number(headshotAccuracy).toFixed(2)}%`,
+
+                    inline:
+                        true
+
+                }
+
+            )
+
+            .setImage(
+                screenshot.url
+            );
+
+
+    // --------------------------------------------------------
+    // CHANGE FROM LAST DRILL
+    // --------------------------------------------------------
+
+    if (
+        previous &&
+        improvement
+    ) {
+
+        embed.addFields({
+
+            name:
+                "📊 CHANGE FROM LAST APPROVED DRILL",
+
+            value:
+
+                `Kills: ${formatChange(improvement.kills)}\n` +
+
+                `Accuracy: ${formatChange(improvement.accuracy)}\n` +
+
+                `Headshot Accuracy: ${formatChange(improvement.headshotAccuracy)}`,
+
+            inline:
+                false
+
+        });
+
+    } else {
+
+        embed.addFields({
+
+            name:
+                "📊 CHANGE FROM LAST APPROVED DRILL",
+
+            value:
+                "This is your first approved drill.",
+
+            inline:
+                false
+
+        });
+
+    }
+
+
+    // --------------------------------------------------------
+    // LIFETIME
+    // --------------------------------------------------------
+
+    if (lifetime) {
+
+        embed.addFields({
+
+            name:
+                "🏆 LIFETIME AVERAGES",
+
+            value:
+
+                `Kills: ${formatNumber(lifetime.avgKills)}\n` +
+
+                `Accuracy: ${formatNumber(lifetime.avgAccuracy)}%\n` +
+
+                `Headshot Accuracy: ${formatNumber(lifetime.avgHeadshotAccuracy)}%`,
+
+            inline:
+                false
+
+        });
+
+    }
+
+
+    // --------------------------------------------------------
+    // APPROVAL BUTTON
+    // --------------------------------------------------------
+
+    const approveButton =
+        new ButtonBuilder()
+
+            .setCustomId(
+                `drill_approve:${result.drillId}:${userId}`
+            )
+
+            .setLabel(
+                "APPROVE DRILL"
+            )
+
+            .setEmoji(
+                "✅"
+            )
+
+            .setStyle(
+                ButtonStyle.Success
+            );
+
+
+    const row =
+        new ActionRowBuilder()
+            .addComponents(
+                approveButton
+            );
+
+
+    // --------------------------------------------------------
+    // PUBLIC MESSAGE
+    // --------------------------------------------------------
+
+    const message =
+        await interaction.channel.send({
+
+            embeds: [
+                embed
+            ],
+
+            components: [
+                row
+            ]
+
+        });
+
+
+    // --------------------------------------------------------
+    // ACKNOWLEDGE INTERACTION
+    // --------------------------------------------------------
+
+    if (
+        interaction.deferred &&
+        !interaction.replied
+    ) {
+
+        await interaction.editReply({
+
+            content:
+                "✅ **YOUR DRILL HAS BEEN SUBMITTED FOR APPROVAL.**",
+
+            components:
+                []
+
+        });
+
+    } else if (
+        !interaction.replied
+    ) {
+
+        await interaction.reply({
+
+            content:
+                "✅ **YOUR DRILL HAS BEEN SUBMITTED FOR APPROVAL.**",
+
+            ephemeral:
+                true
+
+        });
+
+    }
+
+
+    return message;
+
+}
+
+
+// ============================================================
+// APPROVAL
+// ============================================================
+
+export async function handleApproval(interaction) {
+
+    try {
+
+        const parts =
+            interaction.customId.split(":");
+
+
+        const drillId =
+            Number(parts[1]);
+
+
+        const ownerId =
+            parts[2];
+
+
+        if (
+            interaction.user.id !== ownerId
+        ) {
+
+            return await interaction.reply({
+
+                content:
+                    "❌ **ONLY THE PLAYER WHO SUBMITTED THIS DRILL CAN APPROVE IT.**",
+
+                ephemeral:
+                    true
+
+            });
+
+        }
+
+
+        const result =
+            approveDrill(
+
+                drillId,
+
+                interaction.user.id
+
+            );
+
+
+        if (
+            !result ||
+            !result.success
+        ) {
+
+            return await interaction.reply({
+
+                content:
+                    "❌ **THIS DRILL COULD NOT BE APPROVED.**",
+
+                ephemeral:
+                    true
+
+            });
+
+        }
+
+
+        const drill =
+            getDrill(drillId);
+
+
+        const progress =
+            getDailyProgress(
+
+                ownerId,
+
+                drill.day_key
+
+            );
+
+
+        const approvedEmbed =
+            new EmbedBuilder()
+
+                .setTitle(
+                    "🎯 AIM DRILL SUBMISSION"
+                )
+
+                .setDescription(
+
+                    `**PLAYER:** <@${ownerId}>\n` +
+
+                    `**DRILL TYPE:** ${drill.role_type}\n` +
+
+                    `**GUN ROLE:** ${drill.gun_role}\n` +
+
+                    `**STATUS:** ✅ APPROVED`
+
+                )
+
+                .addFields(
+
+                    {
+
+                        name:
+                            "🎯 TOTAL KILLS",
+
+                        value:
+                            `${drill.kills}`,
+
+                        inline:
+                            true
+
+                    },
+
+                    {
+
+                        name:
+                            "📈 ACCURACY",
+
+                        value:
+                            `${Number(drill.accuracy).toFixed(2)}%`,
+
+                        inline:
+                            true
+
+                    },
+
+                    {
+
+                        name:
+                            "🎯 HEADSHOT ACCURACY",
+
+                        value:
+                            `${Number(drill.headshot_accuracy).toFixed(2)}%`,
+
+                        inline:
+                            true
+
+                    },
+
+                    {
+
+                        name:
+                            "📅 DAILY PROGRESS",
+
+                        value:
+
+                            `PRIMARY: ${progress.primary_count}/2\n` +
+
+                            `SECONDARY: ${progress.secondary_count}/2\n` +
+
+                            `TOTAL: ${progress.total_count}/4`,
+
+                        inline:
+                            false
+
+                    }
+
+                )
+
+                .setImage(
+                    drill.screenshot_url
+                )
+
+                .setFooter({
+
+                    text:
+                        `Drill ID: ${drillId} • APPROVED`
+
+                });
+
+
+        await interaction.update({
+
+            embeds: [
+                approvedEmbed
+            ],
+
+            components:
+                []
+
+        });
+
+
+        return await interaction.followUp({
+
+            content:
+
+                "✅ **UR DATA HAS BEEN SUCCESSFULLY IMPORTED AND STORED**\n\n" +
+
+                `🎯 PRIMARY: **${progress.primary_count}/2**\n` +
+
+                `🔫 SECONDARY: **${progress.secondary_count}/2**\n` +
+
+                `🏆 TOTAL: **${progress.total_count}/4**`
+
+        });
+
+
+    } catch (error) {
+
+        console.error(
+            "APPROVAL ERROR:",
+            error
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// LIFETIME STATS
+// ============================================================
+
+function getLifetimeStatsLocal(discordId) {
+
+    try {
+
+        const row =
+            database.prepare(`
+
+                SELECT
+
+                    AVG(kills) AS avgKills,
+
+                    AVG(accuracy) AS avgAccuracy,
+
+                    AVG(headshot_accuracy)
+                        AS avgHeadshotAccuracy,
+
+                    COUNT(*) AS totalDrills
+
+                FROM drills
+
+                WHERE discord_id = ?
+
+                AND status = 'APPROVED'
+
+            `).get(
+                discordId
+            );
+
+
+        if (
+            !row ||
+            Number(row.totalDrills) === 0
+        ) {
+
+            return null;
+
+        }
+
+
+        return row;
+
+    } catch (error) {
+
+        console.error(
+            "LIFETIME STATS ERROR:",
+            error
+        );
+
+        return null;
+
+    }
+
+}
+
+
+// ============================================================
+// ERROR
+// ============================================================
+
+async function sendError(
+    interaction,
+    message
+) {
+
+    if (
+        interaction.deferred &&
+        !interaction.replied
+    ) {
+
+        return await interaction.editReply({
+
+            content:
+                message,
+
+            components:
+                []
+
+        });
+
+    }
+
+
+    if (
+        interaction.replied
+    ) {
+
+        return await interaction.followUp({
+
+            content:
+                message,
+
+            ephemeral:
+                true
+
+        });
+
+    }
+
+
+    return await interaction.reply({
+
+        content:
+            message,
+
+        ephemeral:
+            true
+
+    });
+
+}
+
+
+// ============================================================
+// TOKEN
+// ============================================================
+
+function createToken() {
+
+    return (
+
+        `${Date.now()}_` +
+
+        Math.random()
+            .toString(36)
+            .slice(2, 10)
+
+    );
+
+}
+
+
+// ============================================================
+// FORMAT
+// ============================================================
+
+function formatChange(value) {
+
+    const number =
+        Number(value);
+
+
+    if (
+        !Number.isFinite(number)
+    ) {
+
+        return "N/A";
+
+    }
+
+
+    if (
+        number > 0
+    ) {
+
+        return `+${number.toFixed(2)}`;
+
+    }
+
+
+    return number.toFixed(2);
+
+}
+
+
+function formatNumber(value) {
+
+    const number =
+        Number(value);
+
+
+    if (
+        !Number.isFinite(number)
+    ) {
+
+        return "0.00";
+
+    }
+
+
+    return number.toFixed(2);
 
 }

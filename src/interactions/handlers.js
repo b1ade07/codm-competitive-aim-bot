@@ -16,7 +16,9 @@ import {
 
 import {
     startSubmitDrill,
-    handleApproval
+    handleApproval,
+    handleOCRButton,
+    handleOCRModal
 } from "./submitDrill.js";
 
 import {
@@ -46,8 +48,9 @@ import {
 // MAIN INTERACTION HANDLER
 // ============================================================
 
-export async function handleInteraction(interaction) {
-
+export async function handleInteraction(
+    interaction
+) {
 
     // ========================================================
     // SLASH COMMANDS
@@ -126,7 +129,6 @@ Reject a pending drill.
 \`/admin-user\`
 View a player's stored information.
 `;
-
             }
 
             return await interaction.reply({
@@ -410,6 +412,40 @@ View a player's stored information.
 
 
         // ----------------------------------------------------
+        // OCR SUBMIT BUTTONS
+        // ----------------------------------------------------
+        //
+        // drill_confirm_ocr:TOKEN
+        // drill_correct_ocr:TOKEN
+        // drill_cancel_ocr:TOKEN
+        // drill_manual_ocr:TOKEN
+        //
+        // These MUST be routed before admin approval.
+        // ----------------------------------------------------
+
+        if (
+            interaction.customId.startsWith(
+                "drill_confirm_ocr:"
+            ) ||
+            interaction.customId.startsWith(
+                "drill_correct_ocr:"
+            ) ||
+            interaction.customId.startsWith(
+                "drill_cancel_ocr:"
+            ) ||
+            interaction.customId.startsWith(
+                "drill_manual_ocr:"
+            )
+        ) {
+
+            return await handleOCRButton(
+                interaction
+            );
+
+        }
+
+
+        // ----------------------------------------------------
         // APPROVE DRILL
         // ----------------------------------------------------
 
@@ -420,6 +456,35 @@ View a player's stored information.
         ) {
 
             return await handleApproval(
+                interaction
+            );
+
+        }
+
+    }
+
+
+    // ========================================================
+    // MODAL INTERACTIONS
+    // ========================================================
+
+    if (interaction.isModalSubmit()) {
+
+
+        // ----------------------------------------------------
+        // OCR CORRECTION / MANUAL ENTRY MODALS
+        // ----------------------------------------------------
+
+        if (
+            interaction.customId.startsWith(
+                "drill_correct_modal:"
+            ) ||
+            interaction.customId.startsWith(
+                "drill_manual_modal:"
+            )
+        ) {
+
+            return await handleOCRModal(
                 interaction
             );
 
