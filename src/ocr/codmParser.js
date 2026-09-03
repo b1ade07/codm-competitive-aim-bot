@@ -1,18 +1,10 @@
 // ============================================================
 // COD:M OCR PARSER
-// Handles COD:M screenshots where metric labels appear first
-// and their values appear together below the labels.
 // ============================================================
 
 export function parseCodmStats(ocrText) {
-
-    if (
-        !ocrText ||
-        typeof ocrText !== "string"
-    ) {
-        throw new Error(
-            "OCR text is empty."
-        );
+    if (!ocrText || typeof ocrText !== "string") {
+        throw new Error("OCR text is empty.");
     }
 
     const lines = ocrText
@@ -116,20 +108,11 @@ export function parseCodmStats(ocrText) {
 
 function findKills(lines) {
 
-    // --------------------------------------------------------
-    // CASE 1
+    // Same-line format:
     // Kills: 775
     // Kills 775
-    // --------------------------------------------------------
 
-    for (
-        let i = 0;
-        i < lines.length;
-        i++
-    ) {
-
-        const line =
-            lines[i];
+    for (const line of lines) {
 
         const sameLine =
             line.match(
@@ -154,15 +137,38 @@ function findKills(lines) {
         }
     }
 
-    // --------------------------------------------------------
-    // CASE 2
+    // COD:M layout:
     //
     // Kills
-    // ...
-    // 775
+    // Total Damage
+    // Accuracy
+    // Headshot Accuracy
+    // TTK
+    // Hit Distance
     //
-    // COD:M normally places the values below all labels.
-    // --------------------------------------------------------
+    // 775
+    // 78626.05
+    // 43.83%
+    // 3.16%
+    // Counting
+    // 22.66m
+
+    const values =
+        getCodmValueBlock(lines);
+
+    if (values.length >= 1) {
+
+        const value =
+            parseInteger(
+                values[0]
+            );
+
+        if (value !== null) {
+            return value;
+        }
+    }
+
+    // General fallback
 
     const killsIndex =
         findLineIndex(
@@ -172,20 +178,6 @@ function findKills(lines) {
 
     if (killsIndex !== -1) {
 
-        // First look for the COD:M layout.
-        const layoutValue =
-            findValueFromMetricLayout(
-                lines,
-                "kills"
-            );
-
-        if (
-            layoutValue !== null
-        ) {
-            return layoutValue;
-        }
-
-        // General fallback.
         for (
             let i = killsIndex + 1;
             i < Math.min(
@@ -200,9 +192,7 @@ function findKills(lines) {
                     lines[i]
                 );
 
-            if (
-                value !== null
-            ) {
+            if (value !== null) {
                 return value;
             }
         }
@@ -218,24 +208,15 @@ function findKills(lines) {
 
 function findAccuracy(lines) {
 
-    // --------------------------------------------------------
-    // First handle same-line formats:
-    //
-    // Accuracy: 43.83%
-    // Accuracy 43.83%
-    // --------------------------------------------------------
+    // Same-line formats
 
-    for (
-        let i = 0;
-        i < lines.length;
-        i++
-    ) {
+    for (const line of lines) {
 
-        const line =
-            lines[i];
+        // Never treat Headshot Accuracy
+        // as normal Accuracy.
 
         if (
-            /head\s*shot/i.test(
+            /head\s*shot\s*accuracy/i.test(
                 line
             )
         ) {
@@ -266,71 +247,41 @@ function findAccuracy(lines) {
                     inline[1]
                 );
 
-            if (
-                value !== null
-            ) {
+            if (value !== null) {
                 return value;
             }
         }
     }
 
-    // --------------------------------------------------------
-    // COD:M ACTUAL LAYOUT
-    //
-    // Kills
-    // Total Damage
-    // Accuracy
-    // Headshot Accuracy
-    // TTK
-    // Hit Distance
-    //
-    // 775
-    // 78626.05
-    // 43.83%
-    // 3.16%
-    // Counting
-    // 22.66m
-    //
-    // Therefore:
-    // Accuracy = first percentage value
-    // Headshot Accuracy = second percentage value
-    // --------------------------------------------------------
+    // COD:M value block
+
+    const values =
+        getCodmValueBlock(lines);
+
+    const percentages =
+        values
+            .map(value =>
+                parsePercentage(value)
+            )
+            .filter(value =>
+                value !== null
+            );
+
+    // First percentage = Accuracy
+
+    if (
+        percentages.length >= 1
+    ) {
+        return percentages[0];
+    }
+
+    // General fallback
 
     const accuracyIndex =
         findLineIndex(
             lines,
             /^accuracy$/i
         );
-
-    const headshotIndex =
-        findLineIndex(
-            lines,
-            /^head\s*shot\s*accuracy$/i
-        );
-
-    if (
-        accuracyIndex !== -1 &&
-        headshotIndex !== -1 &&
-        headshotIndex > accuracyIndex
-    ) {
-
-        const value =
-            findPercentageValuesAfterHeaders(
-                lines,
-                accuracyIndex,
-                headshotIndex
-            );
-
-        if (
-            value !== null
-        ) {
-            return value;
-        }
-    }
-
-    // --------------------------------------------------------
-    // Separate-line fallback
-    // --------------------------------------------------------
 
     if (
         accuracyIndex !== -1
@@ -358,9 +309,7 @@ function findAccuracy(lines) {
                     lines[i]
                 );
 
-            if (
-                value !== null
-            ) {
+            if (value !== null) {
                 return value;
             }
         }
@@ -376,20 +325,11 @@ function findAccuracy(lines) {
 
 function findHeadshotAccuracy(lines) {
 
-    // --------------------------------------------------------
-    // Same-line format
+    // Same-line format:
     //
     // Headshot Accuracy: 3.16%
-    // --------------------------------------------------------
 
-    for (
-        let i = 0;
-        i < lines.length;
-        i++
-    ) {
-
-        const line =
-            lines[i];
+    for (const line of lines) {
 
         if (
             !/head\s*shot/i.test(
@@ -401,7 +341,7 @@ function findHeadshotAccuracy(lines) {
 
         const sameLine =
             line.match(
-                /head\s*shot\s*accuracy\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*%/i
+                /head\s*shot\s*accuracy\s*[:\-]?\s*(\d+(?:[.,]\d+)?)\s*%?/i
             );
 
         if (sameLine) {
@@ -410,66 +350,37 @@ function findHeadshotAccuracy(lines) {
                 sameLine[1]
             );
         }
-
-        const inline =
-            line.match(
-                /head\s*shot\s*accuracy\s*[:\-]?\s*(\d+(?:[.,]\d+)?)/i
-            );
-
-        if (inline) {
-
-            const value =
-                parsePercentage(
-                    inline[1]
-                );
-
-            if (
-                value !== null
-            ) {
-                return value;
-            }
-        }
     }
 
-    // --------------------------------------------------------
-    // COD:M ACTUAL LAYOUT
-    // --------------------------------------------------------
+    // COD:M value block
 
-    const accuracyIndex =
-        findLineIndex(
-            lines,
-            /^accuracy$/i
-        );
+    const values =
+        getCodmValueBlock(lines);
+
+    const percentages =
+        values
+            .map(value =>
+                parsePercentage(value)
+            )
+            .filter(value =>
+                value !== null
+            );
+
+    // Second percentage = Headshot Accuracy
+
+    if (
+        percentages.length >= 2
+    ) {
+        return percentages[1];
+    }
+
+    // General fallback
 
     const headshotIndex =
         findLineIndex(
             lines,
             /^head\s*shot\s*accuracy$/i
         );
-
-    if (
-        accuracyIndex !== -1 &&
-        headshotIndex !== -1 &&
-        headshotIndex > accuracyIndex
-    ) {
-
-        const percentages =
-            findAllPercentageValuesAfterHeaders(
-                lines,
-                accuracyIndex
-            );
-
-        if (
-            percentages.length >= 2
-        ) {
-
-            return percentages[1];
-        }
-    }
-
-    // --------------------------------------------------------
-    // Separate lines
-    // --------------------------------------------------------
 
     if (
         headshotIndex !== -1
@@ -489,22 +400,17 @@ function findHeadshotAccuracy(lines) {
                     lines[i]
                 );
 
-            if (
-                value !== null
-            ) {
+            if (value !== null) {
                 return value;
             }
         }
     }
 
-    // --------------------------------------------------------
-    // OCR split format:
+    // OCR split:
     //
     // Head Shot
     // Accuracy
-    // ...
     // 3.16%
-    // --------------------------------------------------------
 
     for (
         let i = 0;
@@ -521,16 +427,23 @@ function findHeadshotAccuracy(lines) {
             )
         ) {
 
-            const percentages =
-                findAllPercentageValuesAfterHeaders(
-                    lines,
-                    i
+            for (
+                let j = i + 2;
+                j < Math.min(
+                    i + 15,
+                    lines.length
                 );
-
-            if (
-                percentages.length
+                j++
             ) {
-                return percentages[0];
+
+                const value =
+                    parsePercentage(
+                        lines[j]
+                    );
+
+                if (value !== null) {
+                    return value;
+                }
             }
         }
     }
@@ -540,219 +453,63 @@ function findHeadshotAccuracy(lines) {
 
 
 // ============================================================
-// COD:M LAYOUT HELPERS
+// COD:M VALUE BLOCK
 // ============================================================
 
-function findValueFromMetricLayout(
-    lines,
-    metric
-) {
+function getCodmValueBlock(lines) {
 
-    const headerIndexes = [];
+    const headers = [
+        "kills",
+        "total damage",
+        "accuracy",
+        "headshot accuracy",
+        "ttk",
+        "hit distance"
+    ];
 
-    const headerRegex =
-        /^(kills?|total\s*damage|accuracy|head\s*shot\s*accuracy|ttk|hit\s*distance)$/i;
+    const normalized =
+        lines.map(
+            normalizeLabel
+        );
 
-    for (
-        let i = 0;
-        i < lines.length;
-        i++
-    ) {
+    const indexes =
+        headers.map(
+            header =>
+                normalized.findIndex(
+                    line =>
+                        line === header
+                )
+        );
 
-        if (
-            headerRegex.test(
-                lines[i]
-            )
-        ) {
-
-            headerIndexes.push(i);
-        }
-    }
-
-    if (
-        headerIndexes.length < 4
-    ) {
-        return null;
-    }
-
-    const firstValueIndex =
-        headerIndexes[
-            headerIndexes.length - 1
-        ] + 1;
+    // All six COD:M labels must exist.
 
     if (
-        firstValueIndex >= lines.length
-    ) {
-        return null;
-    }
-
-    const position =
-        headerIndexes.findIndex(
+        indexes.some(
             index =>
-                lines[index]
-                    .toLowerCase()
-                    .replace(/\s+/g, " ")
-                    .trim() ===
-                metric.toLowerCase()
+                index === -1
+        )
+    ) {
+        return [];
+    }
+
+    const lastHeaderIndex =
+        Math.max(
+            ...indexes
+        );
+
+    // The six values begin immediately
+    // after the last metric label.
+
+    const values =
+        lines.slice(
+            lastHeaderIndex + 1,
+            lastHeaderIndex + 7
         );
 
     if (
-        position === -1
+        values.length < 6
     ) {
-        return null;
-    }
-
-    const valueIndex =
-        firstValueIndex + position;
-
-    if (
-        valueIndex >= lines.length
-    ) {
-        return null;
-    }
-
-    return parseInteger(
-        lines[valueIndex]
-    );
-}
-
-
-// ============================================================
-// FIND PERCENTAGE VALUES
-// ============================================================
-
-function findPercentageValuesAfterHeaders(
-    lines,
-    startIndex
-) {
-
-    const values = [];
-
-    // Find the end of the metric-header block.
-    let headerEnd =
-        startIndex;
-
-    for (
-        let i = startIndex;
-        i < lines.length;
-        i++
-    ) {
-
-        if (
-            /^(kills?|total\s*damage|accuracy|head\s*shot\s*accuracy|ttk|hit\s*distance)$/i.test(
-                lines[i]
-            )
-        ) {
-
-            headerEnd = i;
-        } else {
-
-            // Once we leave the header block,
-            // start looking for percentage values.
-            if (
-                i > headerEnd
-            ) {
-                break;
-            }
-        }
-    }
-
-    for (
-        let i = headerEnd + 1;
-        i < lines.length;
-        i++
-    ) {
-
-        const value =
-            parsePercentage(
-                lines[i]
-            );
-
-        if (
-            value !== null
-        ) {
-
-            values.push(
-                value
-            );
-
-            if (
-                values.length >= 2
-            ) {
-                break;
-            }
-        }
-    }
-
-    return values;
-}
-
-
-function findPercentageValuesAfterHeaders(
-    lines,
-    accuracyIndex,
-    headshotIndex
-) {
-
-    const values = [];
-
-    // In the COD:M layout the complete header block
-    // ends at Hit Distance.
-    //
-    // Find the last known metric header after
-    // Headshot Accuracy.
-
-    const headerRegex =
-        /^(kills?|total\s*damage|accuracy|head\s*shot\s*accuracy|ttk|hit\s*distance)$/i;
-
-    let lastHeader =
-        headshotIndex;
-
-    for (
-        let i = headshotIndex + 1;
-        i < lines.length;
-        i++
-    ) {
-
-        if (
-            headerRegex.test(
-                lines[i]
-            )
-        ) {
-
-            lastHeader = i;
-
-        } else {
-
-            break;
-        }
-    }
-
-    for (
-        let i = lastHeader + 1;
-        i < lines.length;
-        i++
-    ) {
-
-        const value =
-            parsePercentage(
-                lines[i]
-            );
-
-        if (
-            value !== null
-        ) {
-
-            values.push(
-                value
-            );
-
-            if (
-                values.length >= 2
-            ) {
-                break;
-            }
-        }
+        return [];
     }
 
     return values;
@@ -760,7 +517,20 @@ function findPercentageValuesAfterHeaders(
 
 
 // ============================================================
-// LINE SEARCH
+// NORMALIZE LABEL
+// ============================================================
+
+function normalizeLabel(value) {
+
+    return String(value)
+        .toLowerCase()
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+
+// ============================================================
+// FIND LINE INDEX
 // ============================================================
 
 function findLineIndex(
@@ -788,14 +558,15 @@ function findLineIndex(
 
 
 // ============================================================
-// INTEGER
+// INTEGER PARSER
 // ============================================================
 
-function parseInteger(
-    value
-) {
+function parseInteger(value) {
 
-    if (!value) {
+    if (
+        value === null ||
+        value === undefined
+    ) {
         return null;
     }
 
@@ -816,7 +587,9 @@ function parseInteger(
         Number(cleaned);
 
     if (
-        !Number.isInteger(number)
+        !Number.isInteger(
+            number
+        )
     ) {
         return null;
     }
@@ -833,12 +606,10 @@ function parseInteger(
 
 
 // ============================================================
-// PERCENTAGE
+// PERCENTAGE PARSER
 // ============================================================
 
-function parsePercentage(
-    value
-) {
+function parsePercentage(value) {
 
     if (
         value === null ||
