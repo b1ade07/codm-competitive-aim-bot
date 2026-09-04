@@ -107,6 +107,13 @@ export const publicCommands = [
 
 
     new SlashCommandBuilder()
+        .setName("drills-leaderboard")
+        .setDescription(
+            "View the Daily, Weekly, Monthly and Yearly drill leaderboard."
+        ),
+
+
+    new SlashCommandBuilder()
         .setName("stats")
         .setDescription(
             "View your lifetime AIM DRILLS statistics."

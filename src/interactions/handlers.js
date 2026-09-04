@@ -1,4 +1,4 @@
-﻿import {
+import {
     PermissionFlagsBits
 } from "discord.js";
 
