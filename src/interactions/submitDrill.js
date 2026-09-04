@@ -1,4 +1,4 @@
-import {
+﻿import {
     ButtonBuilder,
     ButtonStyle,
     ActionRowBuilder,
@@ -14,7 +14,8 @@ import {
     approveDrill,
     getDailyProgress,
     getDrill,
-    getLastDrill
+    getLastDrill,
+    canSubmitDailyDrill
 } from "../services/drillService.js";
 
 import {
@@ -37,6 +38,14 @@ const pendingOCR = new Map();
 
 
 // ============================================================
+// DAILY LIMIT MESSAGE
+// ============================================================
+
+const DAILY_LIMIT_MESSAGE =
+    "SON!? CALM DOWN ITS ALREADY 4/4 !";
+
+
+// ============================================================
 // /submit-drill
 // ============================================================
 
@@ -47,6 +56,11 @@ export async function startSubmitDrill(interaction) {
         const userId = interaction.user.id;
 
         const user = getUser(userId);
+
+
+        // ----------------------------------------------------
+        // REGISTRATION CHECK
+        // ----------------------------------------------------
 
         if (
             !user ||
@@ -64,23 +78,65 @@ export async function startSubmitDrill(interaction) {
 
 
         // ----------------------------------------------------
+        // HARD DAILY 4/4 LIMIT
+        //
+        // IMPORTANT:
+        // This check happens BEFORE OCR.
+        // Therefore a 5th attempt:
+        // - does not run OCR
+        // - does not create an OCR session
+        // - does not accept values
+        // - does not create a drill
+        // ----------------------------------------------------
+
+        const dailyLimit =
+            canSubmitDailyDrill(userId);
+
+        if (
+            !dailyLimit.allowed
+        ) {
+
+            return await interaction.reply({
+
+                content:
+                    DAILY_LIMIT_MESSAGE,
+
+                ephemeral:
+                    true
+
+            });
+
+        }
+
+
+        // ----------------------------------------------------
         // COMMAND OPTIONS
         // ----------------------------------------------------
 
         const screenshot =
-            interaction.options.getAttachment("screenshot");
+            interaction.options.getAttachment(
+                "screenshot"
+            );
 
         const manualKills =
-            interaction.options.getInteger("total_kills");
+            interaction.options.getInteger(
+                "total_kills"
+            );
 
         const manualAccuracy =
-            interaction.options.getNumber("accuracy");
+            interaction.options.getNumber(
+                "accuracy"
+            );
 
         const manualHeadshotAccuracy =
-            interaction.options.getNumber("headshot_accuracy");
+            interaction.options.getNumber(
+                "headshot_accuracy"
+            );
 
         const drillType =
-            interaction.options.getString("drill_type");
+            interaction.options.getString(
+                "drill_type"
+            );
 
 
         // ----------------------------------------------------
@@ -93,9 +149,13 @@ export async function startSubmitDrill(interaction) {
         ) {
 
             return await interaction.reply({
+
                 content:
                     "❌ **PLEASE UPLOAD A VALID IMAGE SCREENSHOT.**",
-                ephemeral: true
+
+                ephemeral:
+                    true
+
             });
 
         }
@@ -111,9 +171,13 @@ export async function startSubmitDrill(interaction) {
         ) {
 
             return await interaction.reply({
+
                 content:
                     "❌ **DRILL TYPE MUST BE PRIMARY OR SECONDARY.**",
-                ephemeral: true
+
+                ephemeral:
+                    true
+
             });
 
         }
@@ -139,47 +203,84 @@ export async function startSubmitDrill(interaction) {
             manualHeadshotAccuracy !== null
         ) {
 
-            if (!validateKills(manualKills)) {
+            if (
+                !validateKills(manualKills)
+            ) {
 
                 return await interaction.reply({
+
                     content:
                         "❌ **TOTAL NUMBER OF KILLS MUST BE A VALID WHOLE NUMBER.**",
-                    ephemeral: true
+
+                    ephemeral:
+                        true
+
                 });
 
             }
 
-            if (!validatePercentage(manualAccuracy)) {
+
+            if (
+                !validatePercentage(manualAccuracy)
+            ) {
 
                 return await interaction.reply({
+
                     content:
                         "❌ **ACCURACY MUST BE BETWEEN 0 AND 100.**",
-                    ephemeral: true
+
+                    ephemeral:
+                        true
+
                 });
 
             }
 
-            if (!validatePercentage(manualHeadshotAccuracy)) {
+
+            if (
+                !validatePercentage(
+                    manualHeadshotAccuracy
+                )
+            ) {
 
                 return await interaction.reply({
+
                     content:
                         "❌ **HEADSHOT ACCURACY MUST BE BETWEEN 0 AND 100.**",
-                    ephemeral: true
+
+                    ephemeral:
+                        true
+
                 });
 
             }
 
+
             return await createSubmission(
+
                 interaction,
+
                 {
+
                     userId,
+
                     screenshot,
+
                     drillType,
+
                     gunRole,
-                    totalKills: manualKills,
-                    accuracy: manualAccuracy,
-                    headshotAccuracy: manualHeadshotAccuracy
+
+                    totalKills:
+                        manualKills,
+
+                    accuracy:
+                        manualAccuracy,
+
+                    headshotAccuracy:
+                        manualHeadshotAccuracy
+
                 }
+
             );
 
         }
@@ -193,22 +294,32 @@ export async function startSubmitDrill(interaction) {
             ephemeral: true
         });
 
+
         await interaction.editReply({
+
             content:
                 "🔍 **READING YOUR COD:M SCREENSHOT...**\n\n" +
                 "Please wait..."
+
         });
 
 
         let stats;
 
+
         try {
 
             const ocrResult =
-                await runOCR(screenshot.url);
+                await runOCR(
+                    screenshot.url
+                );
+
 
             stats =
-                parseCodmStats(ocrResult.text);
+                parseCodmStats(
+                    ocrResult.text
+                );
+
 
         } catch (error) {
 
@@ -226,17 +337,23 @@ export async function startSubmitDrill(interaction) {
                 createToken();
 
 
-            pendingOCR.set(token, {
+            pendingOCR.set(
 
-                userId,
+                token,
 
-                screenshot,
+                {
 
-                drillType,
+                    userId,
 
-                gunRole
+                    screenshot,
 
-            });
+                    drillType,
+
+                    gunRole
+
+                }
+
+            );
 
 
             const manualButton =
@@ -251,7 +368,7 @@ export async function startSubmitDrill(interaction) {
                     )
 
                     .setEmoji(
-                        "✏️"
+                        "✍️"
                     )
 
                     .setStyle(
@@ -271,7 +388,83 @@ export async function startSubmitDrill(interaction) {
                 content:
 
                     "⚠️ **I COULDN'T READ THE COD:M STATISTICS.**\n\n" +
+                    "You can enter the values manually.",
 
+                components: [
+                    row
+                ]
+
+            });
+
+        }
+
+
+        // ----------------------------------------------------
+        // OCR VALIDATION
+        // ----------------------------------------------------
+
+        if (
+            !stats ||
+            !validateKills(stats.kills) ||
+            !validatePercentage(stats.accuracy) ||
+            !validatePercentage(stats.headshotAccuracy)
+        ) {
+
+            const token =
+                createToken();
+
+
+            pendingOCR.set(
+
+                token,
+
+                {
+
+                    userId,
+
+                    screenshot,
+
+                    drillType,
+
+                    gunRole
+
+                }
+
+            );
+
+
+            const manualButton =
+                new ButtonBuilder()
+
+                    .setCustomId(
+                        `drill_manual_ocr:${token}`
+                    )
+
+                    .setLabel(
+                        "ENTER VALUES MANUALLY"
+                    )
+
+                    .setEmoji(
+                        "✍️"
+                    )
+
+                    .setStyle(
+                        ButtonStyle.Primary
+                    );
+
+
+            const row =
+                new ActionRowBuilder()
+                    .addComponents(
+                        manualButton
+                    );
+
+
+            return await interaction.editReply({
+
+                content:
+
+                    "⚠️ **THE OCR VALUES COULD NOT BE VALIDATED.**\n\n" +
                     "You can enter the values manually.",
 
                 components: [
@@ -291,26 +484,32 @@ export async function startSubmitDrill(interaction) {
             createToken();
 
 
-        pendingOCR.set(token, {
+        pendingOCR.set(
 
-            userId,
+            token,
 
-            screenshot,
+            {
 
-            drillType,
+                userId,
 
-            gunRole,
+                screenshot,
 
-            totalKills:
-                stats.kills,
+                drillType,
 
-            accuracy:
-                stats.accuracy,
+                gunRole,
 
-            headshotAccuracy:
-                stats.headshotAccuracy
+                totalKills:
+                    stats.kills,
 
-        });
+                accuracy:
+                    stats.accuracy,
+
+                headshotAccuracy:
+                    stats.headshotAccuracy
+
+            }
+
+        );
 
 
         // ----------------------------------------------------
@@ -349,7 +548,7 @@ export async function startSubmitDrill(interaction) {
                 )
 
                 .setEmoji(
-                    "✏️"
+                    "✍️"
                 )
 
                 .setStyle(
@@ -398,9 +597,13 @@ export async function startSubmitDrill(interaction) {
 
                 `🎯 **Kills:** ${stats.kills}\n` +
 
-                `📈 **Accuracy:** ${stats.accuracy.toFixed(2)}%\n` +
+                `📊 **Accuracy:** ${Number(
+                    stats.accuracy
+                ).toFixed(2)}%\n` +
 
-                `🎯 **Headshot Accuracy:** ${stats.headshotAccuracy.toFixed(2)}%\n\n` +
+                `🎯 **Headshot Accuracy:** ${Number(
+                    stats.headshotAccuracy
+                ).toFixed(2)}%\n\n` +
 
                 "**Are these values correct?**",
 
@@ -452,8 +655,10 @@ export async function handleOCRButton(interaction) {
         const parts =
             interaction.customId.split(":");
 
+
         const action =
             parts[0];
+
 
         const token =
             parts[1];
@@ -500,6 +705,39 @@ export async function handleOCRButton(interaction) {
 
 
         // ----------------------------------------------------
+        // SECOND DAILY LIMIT CHECK
+        //
+        // Protects against a player leaving the OCR session
+        // open while completing other drills.
+        // ----------------------------------------------------
+
+        const dailyLimit =
+            canSubmitDailyDrill(
+                data.userId
+            );
+
+
+        if (
+            !dailyLimit.allowed
+        ) {
+
+            pendingOCR.delete(token);
+
+
+            return await interaction.update({
+
+                content:
+                    DAILY_LIMIT_MESSAGE,
+
+                components:
+                    []
+
+            });
+
+        }
+
+
+        // ----------------------------------------------------
         // CANCEL
         // ----------------------------------------------------
 
@@ -508,6 +746,7 @@ export async function handleOCRButton(interaction) {
         ) {
 
             pendingOCR.delete(token);
+
 
             return await interaction.update({
 
@@ -545,8 +784,11 @@ export async function handleOCRButton(interaction) {
 
 
             return await createSubmission(
+
                 interaction,
+
                 data
+
             );
 
         }
@@ -588,7 +830,9 @@ export async function handleOCRButton(interaction) {
                     )
 
                     .setPlaceholder(
-                        String(data.totalKills)
+                        String(
+                            data.totalKills
+                        )
                     )
 
                     .setRequired(
@@ -612,7 +856,9 @@ export async function handleOCRButton(interaction) {
                     )
 
                     .setPlaceholder(
-                        String(data.accuracy)
+                        String(
+                            data.accuracy
+                        )
                     )
 
                     .setRequired(
@@ -636,7 +882,9 @@ export async function handleOCRButton(interaction) {
                     )
 
                     .setPlaceholder(
-                        String(data.headshotAccuracy)
+                        String(
+                            data.headshotAccuracy
+                        )
                     )
 
                     .setRequired(
@@ -801,6 +1049,11 @@ export async function handleOCRModal(interaction) {
         const parts =
             interaction.customId.split(":");
 
+
+        const action =
+            parts[0];
+
+
         const token =
             parts[1];
 
@@ -832,6 +1085,36 @@ export async function handleOCRModal(interaction) {
 
                 content:
                     "❌ **THIS SUBMISSION BELONGS TO ANOTHER PLAYER.**",
+
+                ephemeral:
+                    true
+
+            });
+
+        }
+
+
+        // ----------------------------------------------------
+        // FINAL DAILY LIMIT CHECK
+        // ----------------------------------------------------
+
+        const dailyLimit =
+            canSubmitDailyDrill(
+                data.userId
+            );
+
+
+        if (
+            !dailyLimit.allowed
+        ) {
+
+            pendingOCR.delete(token);
+
+
+            return await interaction.reply({
+
+                content:
+                    DAILY_LIMIT_MESSAGE,
 
                 ephemeral:
                     true
@@ -946,15 +1229,21 @@ export async function handleOCRModal(interaction) {
         );
 
 
-        return await interaction.reply({
+        if (
+            !interaction.replied
+        ) {
 
-            content:
-                "❌ **COULD NOT PROCESS THE VALUES.**",
+            return await interaction.reply({
 
-            ephemeral:
-                true
+                content:
+                    "❌ **COULD NOT PROCESS THE VALUES.**",
 
-        });
+                ephemeral:
+                    true
+
+            });
+
+        }
 
     }
 
@@ -987,6 +1276,31 @@ async function createSubmission(
         headshotAccuracy
 
     } = data;
+
+
+    // --------------------------------------------------------
+    // FINAL APPLICATION-LEVEL DAILY LIMIT CHECK
+    // --------------------------------------------------------
+
+    const dailyLimit =
+        canSubmitDailyDrill(
+            userId
+        );
+
+
+    if (
+        !dailyLimit.allowed
+    ) {
+
+        return await sendError(
+
+            interaction,
+
+            DAILY_LIMIT_MESSAGE
+
+        );
+
+    }
 
 
     // --------------------------------------------------------
@@ -1083,6 +1397,21 @@ async function createSubmission(
         !result ||
         !result.success
     ) {
+
+        if (
+            result?.reason === "DAILY_LIMIT"
+        ) {
+
+            return await sendError(
+
+                interaction,
+
+                DAILY_LIMIT_MESSAGE
+
+            );
+
+        }
+
 
         if (
             result?.reason === "DUPLICATE"
@@ -1225,10 +1554,12 @@ async function createSubmission(
                 {
 
                     name:
-                        "📈 ACCURACY",
+                        "📊 ACCURACY",
 
                     value:
-                        `${Number(accuracy).toFixed(2)}%`,
+                        `${Number(
+                            accuracy
+                        ).toFixed(2)}%`,
 
                     inline:
                         true
@@ -1241,7 +1572,9 @@ async function createSubmission(
                         "🎯 HEADSHOT ACCURACY",
 
                     value:
-                        `${Number(headshotAccuracy).toFixed(2)}%`,
+                        `${Number(
+                            headshotAccuracy
+                        ).toFixed(2)}%`,
 
                     inline:
                         true
@@ -1267,15 +1600,21 @@ async function createSubmission(
         embed.addFields({
 
             name:
-                "📊 CHANGE FROM LAST APPROVED DRILL",
+                "📈 CHANGE FROM LAST APPROVED DRILL",
 
             value:
 
-                `Kills: ${formatChange(improvement.kills)}\n` +
+                `Kills: ${formatChange(
+                    improvement.kills
+                )}\n` +
 
-                `Accuracy: ${formatChange(improvement.accuracy)}\n` +
+                `Accuracy: ${formatChange(
+                    improvement.accuracy
+                )}\n` +
 
-                `Headshot Accuracy: ${formatChange(improvement.headshotAccuracy)}`,
+                `Headshot Accuracy: ${formatChange(
+                    improvement.headshotAccuracy
+                )}`,
 
             inline:
                 false
@@ -1287,7 +1626,7 @@ async function createSubmission(
         embed.addFields({
 
             name:
-                "📊 CHANGE FROM LAST APPROVED DRILL",
+                "📈 CHANGE FROM LAST APPROVED DRILL",
 
             value:
                 "This is your first approved drill.",
@@ -1304,7 +1643,9 @@ async function createSubmission(
     // LIFETIME
     // --------------------------------------------------------
 
-    if (lifetime) {
+    if (
+        lifetime
+    ) {
 
         embed.addFields({
 
@@ -1313,11 +1654,17 @@ async function createSubmission(
 
             value:
 
-                `Kills: ${formatNumber(lifetime.avgKills)}\n` +
+                `Kills: ${formatNumber(
+                    lifetime.avgKills
+                )}\n` +
 
-                `Accuracy: ${formatNumber(lifetime.avgAccuracy)}%\n` +
+                `Accuracy: ${formatNumber(
+                    lifetime.avgAccuracy
+                )}%\n` +
 
-                `Headshot Accuracy: ${formatNumber(lifetime.avgHeadshotAccuracy)}%`,
+                `Headshot Accuracy: ${formatNumber(
+                    lifetime.avgHeadshotAccuracy
+                )}%`,
 
             inline:
                 false
@@ -1362,18 +1709,77 @@ async function createSubmission(
     // PUBLIC MESSAGE
     // --------------------------------------------------------
 
-    const message =
-        await interaction.channel.send({
+    let message;
 
-            embeds: [
-                embed
-            ],
+    try {
 
-            components: [
-                row
-            ]
+        message =
+            await interaction.channel.send({
 
-        });
+                embeds: [
+                    embed
+                ],
+
+                components: [
+                    row
+                ]
+
+            });
+
+    } catch (error) {
+
+        console.error(
+            "PUBLIC DRILL MESSAGE ERROR:",
+            error
+        );
+
+        return await sendError(
+
+            interaction,
+
+            "❌ **DRILL WAS SAVED, BUT THE PUBLIC RESULT MESSAGE COULD NOT BE CREATED. PLEASE CONTACT AN ADMIN.**"
+
+        );
+
+    }
+
+
+    // --------------------------------------------------------
+    // SAVE PUBLIC MESSAGE ID
+    //
+    // Required later by /delete-uploaded-data.
+    // --------------------------------------------------------
+
+    try {
+
+        database.prepare(`
+
+            UPDATE drills
+
+            SET
+                screenshot_message_id = ?,
+                screenshot_channel_id = ?
+
+            WHERE id = ?
+
+        `).run(
+
+            String(message.id),
+
+            String(message.channelId),
+
+            result.drillId
+
+        );
+
+    } catch (error) {
+
+        console.error(
+            "FAILED TO SAVE PUBLIC DRILL MESSAGE ID:",
+            error
+        );
+
+    }
 
 
     // --------------------------------------------------------
@@ -1437,6 +1843,10 @@ export async function handleApproval(interaction) {
             parts[2];
 
 
+        // ----------------------------------------------------
+        // SECURITY
+        // ----------------------------------------------------
+
         if (
             interaction.user.id !== ownerId
         ) {
@@ -1453,6 +1863,10 @@ export async function handleApproval(interaction) {
 
         }
 
+
+        // ----------------------------------------------------
+        // APPROVE
+        // ----------------------------------------------------
 
         const result =
             approveDrill(
@@ -1483,7 +1897,24 @@ export async function handleApproval(interaction) {
 
 
         const drill =
-            getDrill(drillId);
+            getDrill(
+                drillId
+            );
+
+
+        if (!drill) {
+
+            return await interaction.reply({
+
+                content:
+                    "❌ **THE APPROVED DRILL COULD NOT BE FOUND.**",
+
+                ephemeral:
+                    true
+
+            });
+
+        }
 
 
         const progress =
@@ -1533,10 +1964,12 @@ export async function handleApproval(interaction) {
                     {
 
                         name:
-                            "📈 ACCURACY",
+                            "📊 ACCURACY",
 
                         value:
-                            `${Number(drill.accuracy).toFixed(2)}%`,
+                            `${Number(
+                                drill.accuracy
+                            ).toFixed(2)}%`,
 
                         inline:
                             true
@@ -1549,7 +1982,9 @@ export async function handleApproval(interaction) {
                             "🎯 HEADSHOT ACCURACY",
 
                         value:
-                            `${Number(drill.headshot_accuracy).toFixed(2)}%`,
+                            `${Number(
+                                drill.headshot_accuracy
+                            ).toFixed(2)}%`,
 
                         inline:
                             true
@@ -1559,7 +1994,7 @@ export async function handleApproval(interaction) {
                     {
 
                         name:
-                            "📅 DAILY PROGRESS",
+                            "📌 DAILY PROGRESS",
 
                         value:
 
@@ -1600,17 +2035,44 @@ export async function handleApproval(interaction) {
         });
 
 
+        // ----------------------------------------------------
+        // NORMAL PROGRESS MESSAGE
+        // ----------------------------------------------------
+
+        if (
+            progress.total_count < 4
+        ) {
+
+            return await interaction.followUp({
+
+                content:
+
+                    "✅ **UR DATA HAS BEEN SUCCESSFULLY IMPORTED AND STORED**\n\n" +
+
+                    `🎯 PRIMARY: **${progress.primary_count}/2**\n` +
+
+                    `🔫 SECONDARY: **${progress.secondary_count}/2**\n` +
+
+                    `🏆 TOTAL: **${progress.total_count}/4**`
+
+            });
+
+        }
+
+
+        // ----------------------------------------------------
+        // 4/4 COMPLETE
+        // ----------------------------------------------------
+
         return await interaction.followUp({
 
             content:
 
-                "✅ **UR DATA HAS BEEN SUCCESSFULLY IMPORTED AND STORED**\n\n" +
+                `🔥 4/4 DRILLS COMPLETE, <@${ownerId}>!\n` +
 
-                `🎯 PRIMARY: **${progress.primary_count}/2**\n` +
+                "🏆 MISSION ACCOMPLISHED — YOU GAVE IT YOUR ALL TODAY!\n" +
 
-                `🔫 SECONDARY: **${progress.secondary_count}/2**\n` +
-
-                `🏆 TOTAL: **${progress.total_count}/4**`
+                "💪 KEEP GRINDING, AIM SHARP, AND COME BACK STRONGER TOMORROW!"
 
         });
 

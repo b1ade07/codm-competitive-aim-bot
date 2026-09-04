@@ -5,18 +5,29 @@ import { getDailyCycle } from "../utils/dailyCycle.js";
 import { updateStreak } from "./streakService.js";
 
 
+// ============================================================
+// USER
+// ============================================================
+
 export function getUser(discordId) {
+
     return db.prepare(`
         SELECT *
         FROM users
         WHERE discord_id = ?
     `).get(discordId);
+
 }
 
 
-export function createOrUpdateUser(discordId, username) {
+export function createOrUpdateUser(
+    discordId,
+    username
+) {
 
-    const existing = getUser(discordId);
+    const existing =
+        getUser(discordId);
+
 
     if (!existing) {
 
@@ -34,6 +45,7 @@ export function createOrUpdateUser(discordId, username) {
         return;
     }
 
+
     db.prepare(`
         UPDATE users
         SET username = ?
@@ -42,8 +54,13 @@ export function createOrUpdateUser(discordId, username) {
         username,
         discordId
     );
+
 }
 
+
+// ============================================================
+// REGISTER ROLES
+// ============================================================
 
 export function registerRoles(
     discordId,
@@ -57,7 +74,10 @@ export function registerRoles(
         username
     );
 
-    const existing = getUser(discordId);
+
+    const existing =
+        getUser(discordId);
+
 
     if (
         existing.primary_role ||
@@ -70,6 +90,7 @@ export function registerRoles(
         };
 
     }
+
 
     db.prepare(`
         UPDATE users
@@ -85,26 +106,33 @@ export function registerRoles(
         discordId
     );
 
+
     return {
         success: true
     };
+
 }
 
+
+// ============================================================
+// DAILY PROGRESS
+// ============================================================
 
 export function getDailyProgress(
     discordId,
     dayKey = getDailyCycle()
 ) {
 
-    let progress = db.prepare(`
-        SELECT *
-        FROM daily_progress
-        WHERE discord_id = ?
-        AND day_key = ?
-    `).get(
-        discordId,
-        dayKey
-    );
+    let progress =
+        db.prepare(`
+            SELECT *
+            FROM daily_progress
+            WHERE discord_id = ?
+            AND day_key = ?
+        `).get(
+            discordId,
+            dayKey
+        );
 
 
     if (!progress) {
@@ -125,21 +153,99 @@ export function getDailyProgress(
         );
 
 
-        progress = db.prepare(`
-            SELECT *
-            FROM daily_progress
+        progress =
+            db.prepare(`
+                SELECT *
+                FROM daily_progress
+                WHERE discord_id = ?
+                AND day_key = ?
+            `).get(
+                discordId,
+                dayKey
+            );
+
+    }
+
+
+    return progress;
+
+}
+
+
+// ============================================================
+// DAILY SUBMISSION COUNT
+// ============================================================
+//
+// IMPORTANT:
+//
+// This is deliberately based on drills already submitted,
+// not only APPROVED drills.
+//
+// PENDING + APPROVED = accepted daily submissions.
+//
+// REJECTED drills do not consume one of the four slots.
+//
+// This protects the new hard 4/day upload limit.
+// ============================================================
+
+export function getDailySubmissionCount(
+    discordId,
+    dayKey = getDailyCycle()
+) {
+
+    const result =
+        db.prepare(`
+            SELECT COUNT(*) AS total
+            FROM drills
             WHERE discord_id = ?
             AND day_key = ?
+            AND status IN ('PENDING', 'APPROVED')
         `).get(
             discordId,
             dayKey
         );
 
-    }
 
-    return progress;
+    return Number(
+        result?.total || 0
+    );
+
 }
 
+
+// ============================================================
+// CHECK DAILY SUBMISSION LIMIT
+// ============================================================
+
+export function canSubmitDailyDrill(
+    discordId,
+    dayKey = getDailyCycle()
+) {
+
+    const count =
+        getDailySubmissionCount(
+            discordId,
+            dayKey
+        );
+
+
+    return {
+        allowed: count < 4,
+        count,
+        limit: 4,
+        remaining:
+            Math.max(
+                0,
+                4 - count
+            )
+    };
+
+}
+
+
+// ============================================================
+// FINGERPRINT
+// ============================================================
 
 function makeFingerprint(
     discordId,
@@ -164,10 +270,16 @@ function makeFingerprint(
         .createHash("sha256")
         .update(raw)
         .digest("hex");
+
 }
 
 
+// ============================================================
+// SUBMIT DRILL
+// ============================================================
+
 export function submitDrill({
+
     discordId,
     roleType,
     gunRole,
@@ -177,26 +289,36 @@ export function submitDrill({
     screenshotUrl,
     screenshotMessageId,
     screenshotChannelId
+
 }) {
 
-    const dayKey = getDailyCycle();
+    const dayKey =
+        getDailyCycle();
 
 
-    const fingerprint = makeFingerprint(
-        discordId,
-        roleType,
-        gunRole,
-        kills,
-        accuracy,
-        headshotAccuracy
-    );
+    const fingerprint =
+        makeFingerprint(
+            discordId,
+            roleType,
+            gunRole,
+            kills,
+            accuracy,
+            headshotAccuracy
+        );
 
 
-    const duplicate = db.prepare(`
-        SELECT id
-        FROM drills
-        WHERE fingerprint = ?
-    `).get(fingerprint);
+    // --------------------------------------------------------
+    // DUPLICATE CHECK
+    // --------------------------------------------------------
+
+    const duplicate =
+        db.prepare(`
+            SELECT id
+            FROM drills
+            WHERE fingerprint = ?
+        `).get(
+            fingerprint
+        );
 
 
     if (duplicate) {
@@ -209,103 +331,181 @@ export function submitDrill({
     }
 
 
-    const progress = getDailyProgress(
-        discordId,
-        dayKey
-    );
+    // --------------------------------------------------------
+    // DATABASE TRANSACTION
+    // --------------------------------------------------------
+    //
+    // The daily limit is checked immediately before INSERT.
+    //
+    // SQLite serializes this transaction, preventing two
+    // simultaneous requests from bypassing the 4-drill limit.
+    // --------------------------------------------------------
+
+    const transaction =
+        db.transaction(() => {
+
+            const currentCount =
+                db.prepare(`
+                    SELECT COUNT(*) AS total
+                    FROM drills
+                    WHERE discord_id = ?
+                    AND day_key = ?
+                    AND status IN ('PENDING', 'APPROVED')
+                `).get(
+                    discordId,
+                    dayKey
+                );
 
 
-    if (
-        roleType === "PRIMARY" &&
-        progress.primary_count >= 2
-    ) {
-
-        return {
-            success: false,
-            reason: "PRIMARY_LIMIT"
-        };
-
-    }
+            const count =
+                Number(
+                    currentCount?.total || 0
+                );
 
 
-    if (
-        roleType === "SECONDARY" &&
-        progress.secondary_count >= 2
-    ) {
+            // ------------------------------------------------
+            // HARD MAXIMUM: 4
+            // ------------------------------------------------
 
-        return {
-            success: false,
-            reason: "SECONDARY_LIMIT"
-        };
+            if (count >= 4) {
 
-    }
+                return {
+                    success: false,
+                    reason: "DAILY_LIMIT",
+                    count,
+                    limit: 4
+                };
 
-
-    const result = db.prepare(`
-        INSERT INTO drills (
-            discord_id,
-            day_key,
-            role_type,
-            gun_role,
-            kills,
-            accuracy,
-            headshot_accuracy,
-            screenshot_url,
-            screenshot_message_id,
-            screenshot_channel_id,
-            fingerprint,
-            status,
-            submitted_at
-        )
-        VALUES (
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            ?,
-            'PENDING',
-            ?
-        )
-    `).run(
-        discordId,
-        dayKey,
-        roleType,
-        gunRole,
-        kills,
-        accuracy,
-        headshotAccuracy,
-        screenshotUrl,
-        screenshotMessageId,
-        screenshotChannelId,
-        fingerprint,
-        new Date().toISOString()
-    );
+            }
 
 
-    return {
-        success: true,
-        drillId: result.lastInsertRowid,
-        dayKey
-    };
+            // ------------------------------------------------
+            // EXISTING PRIMARY LIMIT
+            // ------------------------------------------------
+
+            const progress =
+                getDailyProgress(
+                    discordId,
+                    dayKey
+                );
+
+
+            if (
+                roleType === "PRIMARY" &&
+                progress.primary_count >= 2
+            ) {
+
+                return {
+                    success: false,
+                    reason: "PRIMARY_LIMIT"
+                };
+
+            }
+
+
+            // ------------------------------------------------
+            // EXISTING SECONDARY LIMIT
+            // ------------------------------------------------
+
+            if (
+                roleType === "SECONDARY" &&
+                progress.secondary_count >= 2
+            ) {
+
+                return {
+                    success: false,
+                    reason: "SECONDARY_LIMIT"
+                };
+
+            }
+
+
+            // ------------------------------------------------
+            // INSERT
+            // ------------------------------------------------
+
+            const result =
+                db.prepare(`
+                    INSERT INTO drills (
+                        discord_id,
+                        day_key,
+                        role_type,
+                        gun_role,
+                        kills,
+                        accuracy,
+                        headshot_accuracy,
+                        screenshot_url,
+                        screenshot_message_id,
+                        screenshot_channel_id,
+                        fingerprint,
+                        status,
+                        submitted_at
+                    )
+                    VALUES (
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        'PENDING',
+                        ?
+                    )
+                `).run(
+                    discordId,
+                    dayKey,
+                    roleType,
+                    gunRole,
+                    kills,
+                    accuracy,
+                    headshotAccuracy,
+                    screenshotUrl,
+                    screenshotMessageId,
+                    screenshotChannelId,
+                    fingerprint,
+                    new Date().toISOString()
+                );
+
+
+            return {
+                success: true,
+                drillId:
+                    result.lastInsertRowid,
+                dayKey,
+                countAfterSubmit:
+                    count + 1
+            };
+
+        });
+
+
+    return transaction();
+
 }
 
+
+// ============================================================
+// APPROVE DRILL
+// ============================================================
 
 export function approveDrill(
     drillId,
     approvedBy
 ) {
 
-    const drill = db.prepare(`
-        SELECT *
-        FROM drills
-        WHERE id = ?
-    `).get(drillId);
+    const drill =
+        db.prepare(`
+            SELECT *
+            FROM drills
+            WHERE id = ?
+        `).get(
+            drillId
+        );
 
 
     if (!drill) {
@@ -318,7 +518,9 @@ export function approveDrill(
     }
 
 
-    if (drill.status !== "PENDING") {
+    if (
+        drill.status !== "PENDING"
+    ) {
 
         return {
             success: false,
@@ -328,89 +530,96 @@ export function approveDrill(
     }
 
 
-    const transaction = db.transaction(() => {
+    const transaction =
+        db.transaction(() => {
 
-        db.prepare(`
-            UPDATE drills
-            SET
-                status = 'APPROVED',
-                approved_at = ?,
-                approved_by = ?
-            WHERE id = ?
-        `).run(
-            new Date().toISOString(),
-            approvedBy,
-            drillId
-        );
-
-
-        const progress = getDailyProgress(
-            drill.discord_id,
-            drill.day_key
-        );
+            db.prepare(`
+                UPDATE drills
+                SET
+                    status = 'APPROVED',
+                    approved_at = ?,
+                    approved_by = ?
+                WHERE id = ?
+            `).run(
+                new Date().toISOString(),
+                approvedBy,
+                drillId
+            );
 
 
-        let primary =
-            progress.primary_count;
-
-        let secondary =
-            progress.secondary_count;
-
-
-        if (
-            drill.role_type === "PRIMARY"
-        ) {
-            primary++;
-        }
+            const progress =
+                getDailyProgress(
+                    drill.discord_id,
+                    drill.day_key
+                );
 
 
-        if (
-            drill.role_type === "SECONDARY"
-        ) {
-            secondary++;
-        }
+            let primary =
+                progress.primary_count;
 
 
-        const total =
-            primary + secondary;
+            let secondary =
+                progress.secondary_count;
 
 
-        const completed =
-            primary >= 2 &&
-            secondary >= 2
-                ? 1
-                : 0;
+            if (
+                drill.role_type === "PRIMARY"
+            ) {
+
+                primary++;
+
+            }
 
 
-        db.prepare(`
-            UPDATE daily_progress
-            SET
-                primary_count = ?,
-                secondary_count = ?,
-                total_count = ?,
-                completed = ?
-            WHERE discord_id = ?
-            AND day_key = ?
-        `).run(
-            primary,
-            secondary,
-            total,
-            completed,
-            drill.discord_id,
-            drill.day_key
-        );
+            if (
+                drill.role_type === "SECONDARY"
+            ) {
+
+                secondary++;
+
+            }
 
 
-        if (completed) {
+            const total =
+                primary + secondary;
 
-            updateStreak(
+
+            const completed =
+                primary >= 2 &&
+                secondary >= 2
+                    ? 1
+                    : 0;
+
+
+            db.prepare(`
+                UPDATE daily_progress
+                SET
+                    primary_count = ?,
+                    secondary_count = ?,
+                    total_count = ?,
+                    completed = ?
+                WHERE discord_id = ?
+                AND day_key = ?
+            `).run(
+                primary,
+                secondary,
+                total,
+                completed,
                 drill.discord_id,
                 drill.day_key
             );
 
-        }
 
-    });
+            if (completed) {
+
+                updateStreak(
+                    drill.discord_id,
+                    drill.day_key
+                );
+
+            }
+
+        });
 
 
     transaction();
@@ -420,19 +629,27 @@ export function approveDrill(
         success: true,
         drill
     };
+
 }
 
+
+// ============================================================
+// REJECT DRILL
+// ============================================================
 
 export function rejectDrill(
     drillId,
     rejectedBy
 ) {
 
-    const drill = db.prepare(`
-        SELECT *
-        FROM drills
-        WHERE id = ?
-    `).get(drillId);
+    const drill =
+        db.prepare(`
+            SELECT *
+            FROM drills
+            WHERE id = ?
+        `).get(
+            drillId
+        );
 
 
     if (!drill) {
@@ -445,7 +662,9 @@ export function rejectDrill(
     }
 
 
-    if (drill.status !== "PENDING") {
+    if (
+        drill.status !== "PENDING"
+    ) {
 
         return {
             success: false,
@@ -471,21 +690,36 @@ export function rejectDrill(
         success: true,
         drill
     };
+
 }
 
 
-export function getDrill(drillId) {
+// ============================================================
+// GET DRILL
+// ============================================================
+
+export function getDrill(
+    drillId
+) {
 
     return db.prepare(`
         SELECT *
         FROM drills
         WHERE id = ?
-    `).get(drillId);
+    `).get(
+        drillId
+    );
 
 }
 
 
-export function getLastDrill(discordId) {
+// ============================================================
+// GET LAST APPROVED DRILL
+// ============================================================
+
+export function getLastDrill(
+    discordId
+) {
 
     return db.prepare(`
         SELECT *
@@ -494,6 +728,8 @@ export function getLastDrill(discordId) {
         AND status = 'APPROVED'
         ORDER BY approved_at DESC
         LIMIT 1
-    `).get(discordId);
+    `).get(
+        discordId
+    );
 
 }
