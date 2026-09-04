@@ -1,4 +1,4 @@
-import {
+﻿import {
     PermissionFlagsBits
 } from "discord.js";
 
@@ -42,6 +42,10 @@ import {
     approveDrill,
     rejectDrill
 } from "../services/drillService.js";
+
+import {
+    handleAdminChangeRole
+} from "../commands/adminChangeRole.js";
 
 
 // ============================================================
@@ -128,6 +132,9 @@ Reject a pending drill.
 
 \`/admin-user\`
 View a player's stored information.
+
+\`/admin-change-role\`
+Change a registered player's Primary or Secondary gun role.
 `;
             }
 
@@ -401,6 +408,19 @@ View a player's stored information.
 
         }
 
+
+        // ====================================================
+        // ADMIN CHANGE ROLE
+        // ====================================================
+
+        if (command === "admin-change-role") {
+
+            return await handleAdminChangeRole(
+                interaction
+            );
+
+        }
+
     }
 
 
@@ -410,17 +430,8 @@ View a player's stored information.
 
     if (interaction.isButton()) {
 
-
         // ----------------------------------------------------
         // OCR SUBMIT BUTTONS
-        // ----------------------------------------------------
-        //
-        // drill_confirm_ocr:TOKEN
-        // drill_correct_ocr:TOKEN
-        // drill_cancel_ocr:TOKEN
-        // drill_manual_ocr:TOKEN
-        //
-        // These MUST be routed before admin approval.
         // ----------------------------------------------------
 
         if (
@@ -470,11 +481,6 @@ View a player's stored information.
 
     if (interaction.isModalSubmit()) {
 
-
-        // ----------------------------------------------------
-        // OCR CORRECTION / MANUAL ENTRY MODALS
-        // ----------------------------------------------------
-
         if (
             interaction.customId.startsWith(
                 "drill_correct_modal:"
@@ -499,14 +505,6 @@ View a player's stored information.
 
     if (interaction.isStringSelectMenu()) {
 
-
-        // ----------------------------------------------------
-        // PRIMARY ROLE
-        //
-        // Custom ID:
-        // primary_role_select:USER_ID
-        // ----------------------------------------------------
-
         if (
             interaction.customId.startsWith(
                 "primary_role_select:"
@@ -520,13 +518,6 @@ View a player's stored information.
         }
 
 
-        // ----------------------------------------------------
-        // SECONDARY ROLE
-        //
-        // Custom ID:
-        // secondary_role_select:USER_ID:PRIMARY
-        // ----------------------------------------------------
-
         if (
             interaction.customId.startsWith(
                 "secondary_role_select:"
@@ -539,18 +530,6 @@ View a player's stored information.
 
         }
 
-
-        // ----------------------------------------------------
-        // LEADERBOARD
-        //
-        // Custom ID:
-        // leaderboard:USER_ID
-        //
-        // Selected value:
-        // kills
-        // accuracy
-        // headshot_accuracy
-        // ----------------------------------------------------
 
         if (
             interaction.customId.startsWith(

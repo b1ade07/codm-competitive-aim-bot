@@ -1,4 +1,4 @@
-import {
+﻿import {
     SlashCommandBuilder,
     PermissionFlagsBits
 } from "discord.js";
@@ -10,87 +10,227 @@ import {
 
 export const publicCommands = [
 
-    // ----------------------------------------------------------
-    // /commands
-    // ----------------------------------------------------------
-
     new SlashCommandBuilder()
-
         .setName("commands")
-
         .setDescription(
             "View all commands available to normal members."
         ),
 
 
-    // ----------------------------------------------------------
-    // /setup-roles
-    // ----------------------------------------------------------
-
     new SlashCommandBuilder()
-
         .setName("setup-roles")
-
         .setDescription(
             "Register your permanent Primary and Secondary gun roles."
         ),
 
 
-    // ----------------------------------------------------------
-    // /roles
-    // ----------------------------------------------------------
-
     new SlashCommandBuilder()
-
         .setName("roles")
-
         .setDescription(
             "View your registered gun roles."
         ),
 
 
-    // ----------------------------------------------------------
-    // /submit-drill
-    // ----------------------------------------------------------
-
     new SlashCommandBuilder()
-
         .setName("submit-drill")
-
         .setDescription(
             "Submit your AIM drill."
         )
 
-
-        // SCREENSHOT
         .addAttachmentOption(option =>
+            option
+                .setName("screenshot")
+                .setDescription(
+                    "Upload your AIM drill screenshot."
+                )
+                .setRequired(true)
+        )
+
+        .addStringOption(option =>
+            option
+                .setName("drill_type")
+                .setDescription(
+                    "Select PRIMARY or SECONDARY."
+                )
+                .setRequired(true)
+                .addChoices(
+                    {
+                        name: "PRIMARY",
+                        value: "PRIMARY"
+                    },
+                    {
+                        name: "SECONDARY",
+                        value: "SECONDARY"
+                    }
+                )
+        )
+
+        .addIntegerOption(option =>
+            option
+                .setName("total_kills")
+                .setDescription(
+                    "Optional: manually enter total kills."
+                )
+                .setRequired(false)
+                .setMinValue(0)
+                .setMaxValue(9999)
+        )
+
+        .addNumberOption(option =>
+            option
+                .setName("accuracy")
+                .setDescription(
+                    "Optional: manually enter accuracy percentage."
+                )
+                .setRequired(false)
+                .setMinValue(0)
+                .setMaxValue(100)
+        )
+
+        .addNumberOption(option =>
+            option
+                .setName("headshot_accuracy")
+                .setDescription(
+                    "Optional: manually enter headshot accuracy percentage."
+                )
+                .setRequired(false)
+                .setMinValue(0)
+                .setMaxValue(100)
+        ),
+
+
+    new SlashCommandBuilder()
+        .setName("leaderboard")
+        .setDescription(
+            "View the lifetime AIM DRILLS leaderboard."
+        ),
+
+
+    new SlashCommandBuilder()
+        .setName("stats")
+        .setDescription(
+            "View your lifetime AIM DRILLS statistics."
+        ),
+
+
+    new SlashCommandBuilder()
+        .setName("today")
+        .setDescription(
+            "View your current daily AIM DRILLS progress."
+        ),
+
+
+    new SlashCommandBuilder()
+        .setName("streak")
+        .setDescription(
+            "View your current and longest streak."
+        )
+
+];
+
+
+// ============================================================
+// ADMIN COMMANDS
+// ============================================================
+
+export const adminCommands = [
+
+    new SlashCommandBuilder()
+        .setName("admin-approve")
+        .setDescription(
+            "Approve a pending drill."
+        )
+        .addIntegerOption(option =>
+            option
+                .setName("drill_id")
+                .setDescription(
+                    "The drill ID to approve."
+                )
+                .setRequired(true)
+        )
+        .setDefaultMemberPermissions(
+            PermissionFlagsBits.Administrator
+        ),
+
+
+    new SlashCommandBuilder()
+        .setName("admin-reject")
+        .setDescription(
+            "Reject a pending drill."
+        )
+        .addIntegerOption(option =>
+            option
+                .setName("drill_id")
+                .setDescription(
+                    "The drill ID to reject."
+                )
+                .setRequired(true)
+        )
+        .addStringOption(option =>
+            option
+                .setName("reason")
+                .setDescription(
+                    "Reason for rejecting the drill."
+                )
+                .setRequired(false)
+        )
+        .setDefaultMemberPermissions(
+            PermissionFlagsBits.Administrator
+        ),
+
+
+    new SlashCommandBuilder()
+        .setName("admin-user")
+        .setDescription(
+            "View a player's stored information."
+        )
+        .addUserOption(option =>
+            option
+                .setName("member")
+                .setDescription(
+                    "Discord member."
+                )
+                .setRequired(true)
+        )
+        .setDefaultMemberPermissions(
+            PermissionFlagsBits.Administrator
+        ),
+
+
+    // ----------------------------------------------------------
+    // /admin-change-role
+    // ----------------------------------------------------------
+
+    new SlashCommandBuilder()
+
+        .setName("admin-change-role")
+
+        .setDescription(
+            "Change a registered player's Primary or Secondary gun role."
+        )
+
+        .addUserOption(option =>
 
             option
 
-                .setName("screenshot")
+                .setName("member")
 
                 .setDescription(
-                    "Upload your AIM drill screenshot."
+                    "Registered Discord player."
                 )
 
                 .setRequired(true)
 
         )
 
-
-        // DRILL TYPE
-        //
-        // IMPORTANT:
-        // Required options must come before optional options.
-
         .addStringOption(option =>
 
             option
 
-                .setName("drill_type")
+                .setName("role_type")
 
                 .setDescription(
-                    "Select PRIMARY or SECONDARY."
+                    "Select which permanent role to change."
                 )
 
                 .setRequired(true)
@@ -111,232 +251,56 @@ export const publicCommands = [
 
         )
 
-
-        // OPTIONAL MANUAL KILLS
-        //
-        // Normally leave this blank.
-        // OCR will read the screenshot automatically.
-
-        .addIntegerOption(option =>
-
-            option
-
-                .setName("total_kills")
-
-                .setDescription(
-                    "Optional: manually enter total kills."
-                )
-
-                .setRequired(false)
-
-                .setMinValue(0)
-
-                .setMaxValue(9999)
-
-        )
-
-
-        // OPTIONAL MANUAL ACCURACY
-
-        .addNumberOption(option =>
-
-            option
-
-                .setName("accuracy")
-
-                .setDescription(
-                    "Optional: manually enter accuracy percentage."
-                )
-
-                .setRequired(false)
-
-                .setMinValue(0)
-
-                .setMaxValue(100)
-
-        )
-
-
-        // OPTIONAL MANUAL HEADSHOT ACCURACY
-
-        .addNumberOption(option =>
-
-            option
-
-                .setName("headshot_accuracy")
-
-                .setDescription(
-                    "Optional: manually enter headshot accuracy percentage."
-                )
-
-                .setRequired(false)
-
-                .setMinValue(0)
-
-                .setMaxValue(100)
-
-        ),
-
-
-    // ----------------------------------------------------------
-    // /leaderboard
-    // ----------------------------------------------------------
-
-    new SlashCommandBuilder()
-
-        .setName("leaderboard")
-
-        .setDescription(
-            "View the lifetime AIM DRILLS leaderboard."
-        ),
-
-
-    // ----------------------------------------------------------
-    // /stats
-    // ----------------------------------------------------------
-
-    new SlashCommandBuilder()
-
-        .setName("stats")
-
-        .setDescription(
-            "View your lifetime AIM DRILLS statistics."
-        ),
-
-
-    // ----------------------------------------------------------
-    // /today
-    // ----------------------------------------------------------
-
-    new SlashCommandBuilder()
-
-        .setName("today")
-
-        .setDescription(
-            "View your current daily AIM DRILLS progress."
-        ),
-
-
-    // ----------------------------------------------------------
-    // /streak
-    // ----------------------------------------------------------
-
-    new SlashCommandBuilder()
-
-        .setName("streak")
-
-        .setDescription(
-            "View your current and longest streak."
-        )
-
-];
-
-
-// ============================================================
-// ADMIN COMMANDS
-// ============================================================
-
-export const adminCommands = [
-
-    // ----------------------------------------------------------
-    // /admin-approve
-    // ----------------------------------------------------------
-
-    new SlashCommandBuilder()
-
-        .setName("admin-approve")
-
-        .setDescription(
-            "Approve a pending drill."
-        )
-
-        .addIntegerOption(option =>
-
-            option
-
-                .setName("drill_id")
-
-                .setDescription(
-                    "The drill ID to approve."
-                )
-
-                .setRequired(true)
-
-        )
-
-        .setDefaultMemberPermissions(
-            PermissionFlagsBits.Administrator
-        ),
-
-
-    // ----------------------------------------------------------
-    // /admin-reject
-    // ----------------------------------------------------------
-
-    new SlashCommandBuilder()
-
-        .setName("admin-reject")
-
-        .setDescription(
-            "Reject a pending drill."
-        )
-
-        .addIntegerOption(option =>
-
-            option
-
-                .setName("drill_id")
-
-                .setDescription(
-                    "The drill ID to reject."
-                )
-
-                .setRequired(true)
-
-        )
-
         .addStringOption(option =>
 
             option
 
-                .setName("reason")
+                .setName("gun_role")
 
                 .setDescription(
-                    "Reason for rejecting the drill."
-                )
-
-                .setRequired(false)
-
-        )
-
-        .setDefaultMemberPermissions(
-            PermissionFlagsBits.Administrator
-        ),
-
-
-    // ----------------------------------------------------------
-    // /admin-user
-    // ----------------------------------------------------------
-
-    new SlashCommandBuilder()
-
-        .setName("admin-user")
-
-        .setDescription(
-            "View a player's stored information."
-        )
-
-        .addUserOption(option =>
-
-            option
-
-                .setName("member")
-
-                .setDescription(
-                    "Discord member."
+                    "New gun role."
                 )
 
                 .setRequired(true)
+
+                .addChoices(
+
+                    {
+                        name: "AR",
+                        value: "AR"
+                    },
+
+                    {
+                        name: "SMG",
+                        value: "SMG"
+                    },
+
+                    {
+                        name: "LMG",
+                        value: "LMG"
+                    },
+
+                    {
+                        name: "SHOTGUN",
+                        value: "SHOTGUN"
+                    },
+
+                    {
+                        name: "MARKSMAN",
+                        value: "MARKSMAN"
+                    },
+
+                    {
+                        name: "SNIPER",
+                        value: "SNIPER"
+                    },
+
+                    {
+                        name: "PISTOL",
+                        value: "PISTOL"
+                    }
+
+                )
 
         )
 
