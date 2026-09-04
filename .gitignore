@@ -5,3 +5,5 @@ data/*.sqlite-*
 *.sqlite
 *.sqlite-*
 *.backup
+# Local development backups
+*_before_*_backup.js

@@ -131,6 +131,35 @@ export const publicCommands = [
         .setName("streak")
         .setDescription(
             "View your current and longest streak."
+        ),
+
+
+    // ----------------------------------------------------------
+    // /delete-uploaded-data
+    // ----------------------------------------------------------
+
+    new SlashCommandBuilder()
+
+        .setName("delete-uploaded-data")
+
+        .setDescription(
+            "Delete one of your own approved AIM drill uploads."
+        )
+
+        .addIntegerOption(option =>
+
+            option
+
+                .setName("drill_id")
+
+                .setDescription(
+                    "The specific approved Drill ID to delete."
+                )
+
+                .setRequired(true)
+
+                .setMinValue(1)
+
         )
 
 ];

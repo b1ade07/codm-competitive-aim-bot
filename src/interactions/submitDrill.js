@@ -2102,20 +2102,99 @@ function getLifetimeStatsLocal(discordId) {
 
                 SELECT
 
-                    AVG(kills) AS avgKills,
+                    (
+                        COALESCE(archive.total_kills, 0)
+                        +
+                        COALESCE(current.total_kills, 0)
+                    )
+                    /
+                    NULLIF(
+                        COALESCE(archive.approved_count, 0)
+                        +
+                        COALESCE(current.approved_count, 0),
+                        0
+                    )
+                    AS avgKills,
 
-                    AVG(accuracy) AS avgAccuracy,
+                    (
+                        COALESCE(archive.total_accuracy, 0)
+                        +
+                        COALESCE(current.total_accuracy, 0)
+                    )
+                    /
+                    NULLIF(
+                        COALESCE(archive.approved_count, 0)
+                        +
+                        COALESCE(current.approved_count, 0),
+                        0
+                    )
+                    AS avgAccuracy,
 
-                    AVG(headshot_accuracy)
-                        AS avgHeadshotAccuracy,
+                    (
+                        COALESCE(archive.total_headshot_accuracy, 0)
+                        +
+                        COALESCE(current.total_headshot_accuracy, 0)
+                    )
+                    /
+                    NULLIF(
+                        COALESCE(archive.approved_count, 0)
+                        +
+                        COALESCE(current.approved_count, 0),
+                        0
+                    )
+                    AS avgHeadshotAccuracy,
 
-                    COUNT(*) AS totalDrills
+                    (
+                        COALESCE(archive.approved_count, 0)
+                        +
+                        COALESCE(current.approved_count, 0)
+                    )
+                    AS totalDrills
 
-                FROM drills
+                FROM users
 
-                WHERE discord_id = ?
+                LEFT JOIN lifetime_drill_stats AS archive
 
-                AND status = 'APPROVED'
+                    ON archive.discord_id =
+                        users.discord_id
+
+                LEFT JOIN (
+
+                    SELECT
+
+                        discord_id,
+
+                        COUNT(*) AS approved_count,
+
+                        COALESCE(
+                            SUM(kills),
+                            0
+                        ) AS total_kills,
+
+                        COALESCE(
+                            SUM(accuracy),
+                            0
+                        ) AS total_accuracy,
+
+                        COALESCE(
+                            SUM(headshot_accuracy),
+                            0
+                        ) AS total_headshot_accuracy
+
+                    FROM drills
+
+                    WHERE status =
+                        'APPROVED'
+
+                    GROUP BY
+                        discord_id
+
+                ) AS current
+
+                    ON current.discord_id =
+                        users.discord_id
+
+                WHERE users.discord_id = ?
 
             `).get(
                 discordId
@@ -2147,10 +2226,6 @@ function getLifetimeStatsLocal(discordId) {
 
 }
 
-
-// ============================================================
-// ERROR
-// ============================================================
 
 async function sendError(
     interaction,

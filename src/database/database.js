@@ -1,4 +1,4 @@
-import Database from "better-sqlite3";
+﻿import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -123,6 +123,46 @@ CREATE TABLE IF NOT EXISTS daily_progress (
 
 
 // ==========================================
+// LIFETIME DRILL STATISTICS ARCHIVE
+// ==========================================
+//
+// This table preserves lifetime approved-drill totals
+// when individual drill records become older than the
+// one-year retention period.
+//
+// IMPORTANT:
+// - Existing users are never deleted.
+// - Existing drills are not changed when this table is created.
+// - Existing statistics remain in the drills table until
+//   the retention cleanup actually runs.
+// - Archive rows are added only when old approved drills
+//   are intentionally archived.
+// ==========================================
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS lifetime_drill_stats (
+
+    discord_id TEXT PRIMARY KEY,
+
+    approved_count INTEGER NOT NULL DEFAULT 0,
+
+    total_kills REAL NOT NULL DEFAULT 0,
+
+    total_accuracy REAL NOT NULL DEFAULT 0,
+
+    total_headshot_accuracy REAL NOT NULL DEFAULT 0,
+
+    last_archived_day TEXT,
+
+    updated_at TEXT,
+
+    FOREIGN KEY(discord_id)
+        REFERENCES users(discord_id)
+);
+`);
+
+
+// ==========================================
 // INDEXES
 // ==========================================
 
@@ -148,6 +188,12 @@ db.exec(`
 CREATE INDEX IF NOT EXISTS
 idx_drills_role
 ON drills(role_type);
+`);
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS
+idx_lifetime_stats_user
+ON lifetime_drill_stats(discord_id);
 `);
 
 console.log("Database initialized successfully.");

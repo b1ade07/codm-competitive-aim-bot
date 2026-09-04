@@ -1,4 +1,4 @@
-import {
+﻿import {
     PermissionFlagsBits
 } from "discord.js";
 
@@ -27,6 +27,11 @@ import {
 } from "../commands/leaderboard.js";
 
 import {
+    startDrillsLeaderboard,
+    showDrillsLeaderboard
+} from "../commands/drillsLeaderboard.js";
+
+import {
     showStats
 } from "../commands/stats.js";
 
@@ -46,6 +51,10 @@ import {
 import {
     handleAdminChangeRole
 } from "../commands/adminChangeRole.js";
+
+import {
+    handleDeleteUploadedData
+} from "../commands/deleteUploadedData.js";
 
 
 // ============================================================
@@ -98,6 +107,9 @@ Submit your AIM drill screenshot and manually enter:
 \`/leaderboard\`
 View the lifetime AIM DRILLS leaderboard.
 
+\`/drills-leaderboard\`
+View Daily, Weekly, Monthly and Yearly drill counts.
+
 \`/stats\`
 View your lifetime AIM DRILLS statistics.
 
@@ -106,6 +118,9 @@ View today's drill progress.
 
 \`/streak\`
 View your current and longest streak.
+
+\`/delete-uploaded-data\`
+Delete one of your own APPROVED drills using its specific Drill ID.
 
 **DAILY TARGET**
 
@@ -122,24 +137,27 @@ Only approved drills count toward progress.
             if (isAdmin) {
 
                 message += `
-**🔐 ADMIN COMMANDS**
 
-\`/admin-approve\`
+**ADMIN COMMANDS**
+
+\`/admin-approve <drill_id>\`
 Approve a pending drill.
 
-\`/admin-reject\`
+\`/admin-reject <drill_id>\`
 Reject a pending drill.
 
-\`/admin-user\`
-View a player's stored information.
+\`/admin-user <member>\`
+View stored player information.
 
-\`/admin-change-role\`
-Change a registered player's Primary or Secondary gun role.
+\`/admin-change-role <member> <role_type> <gun_role>\`
+Correct a player's permanent Primary or Secondary gun role.
 `;
+
             }
 
             return await interaction.reply({
-                content: message
+                content: message,
+                ephemeral: true
             });
 
         }
@@ -178,9 +196,11 @@ Change a registered player's Primary or Secondary gun role.
         if (
             command === "submit-drill" ||
             command === "leaderboard" ||
+            command === "drills-leaderboard" ||
             command === "stats" ||
             command === "today" ||
-            command === "streak"
+            command === "streak" ||
+            command === "delete-uploaded-data"
         ) {
 
             if (
@@ -229,6 +249,19 @@ Change a registered player's Primary or Secondary gun role.
 
 
         // ====================================================
+        // /DRILLS-LEADERBOARD
+        // ====================================================
+
+        if (command === "drills-leaderboard") {
+
+            return await startDrillsLeaderboard(
+                interaction
+            );
+
+        }
+
+
+        // ====================================================
         // /STATS
         // ====================================================
 
@@ -268,6 +301,19 @@ Change a registered player's Primary or Secondary gun role.
 
 
         // ====================================================
+        // /DELETE-UPLOADED-DATA
+        // ====================================================
+
+        if (command === "delete-uploaded-data") {
+
+            return await handleDeleteUploadedData(
+                interaction
+            );
+
+        }
+
+
+        // ====================================================
         // ADMIN APPROVE
         // ====================================================
 
@@ -280,12 +326,9 @@ Change a registered player's Primary or Secondary gun role.
             ) {
 
                 return await interaction.reply({
-
                     content:
-                        "❌ You do not have permission to use this command.",
-
+                        "❌ Administrator permission required.",
                     ephemeral: true
-
                 });
 
             }
@@ -301,18 +344,20 @@ Change a registered player's Primary or Secondary gun role.
                     interaction.user.id
                 );
 
+            if (!result.success) {
+
+                return await interaction.reply({
+                    content:
+                        `❌ Could not approve Drill ID **${drillId}**.\nReason: **${result.reason}**`,
+                    ephemeral: true
+                });
+
+            }
+
             return await interaction.reply({
-
                 content:
-                    result?.message ||
-                    (
-                        result?.success
-                            ? "✅ Drill approved successfully."
-                            : "❌ Drill could not be approved."
-                    ),
-
-                ephemeral: true
-
+                    `✅ Drill ID **${drillId}** has been approved.`,
+                ephemeral: false
             });
 
         }
@@ -331,12 +376,9 @@ Change a registered player's Primary or Secondary gun role.
             ) {
 
                 return await interaction.reply({
-
                     content:
-                        "❌ You do not have permission to use this command.",
-
+                        "❌ Administrator permission required.",
                     ephemeral: true
-
                 });
 
             }
@@ -346,24 +388,36 @@ Change a registered player's Primary or Secondary gun role.
                     "drill_id"
                 );
 
+            const reason =
+                interaction.options.getString(
+                    "reason"
+                );
+
             const result =
                 rejectDrill(
                     drillId,
                     interaction.user.id
                 );
 
+            if (!result.success) {
+
+                return await interaction.reply({
+                    content:
+                        `❌ Could not reject Drill ID **${drillId}**.\nReason: **${result.reason}**`,
+                    ephemeral: true
+                });
+
+            }
+
             return await interaction.reply({
-
                 content:
-                    result?.message ||
+                    `❌ Drill ID **${drillId}** rejected.` +
                     (
-                        result?.success
-                            ? "✅ Drill rejected successfully."
-                            : "❌ Drill could not be rejected."
+                        reason
+                            ? `\nReason: ${reason}`
+                            : ""
                     ),
-
-                ephemeral: true
-
+                ephemeral: false
             });
 
         }
@@ -382,12 +436,9 @@ Change a registered player's Primary or Secondary gun role.
             ) {
 
                 return await interaction.reply({
-
                     content:
-                        "❌ You do not have permission to use this command.",
-
+                        "❌ Administrator permission required.",
                     ephemeral: true
-
                 });
 
             }
@@ -397,13 +448,35 @@ Change a registered player's Primary or Secondary gun role.
                     "member"
                 );
 
+            const user =
+                interaction.client.users.cache.get(
+                    member.id
+                );
+
+            const stored =
+                (await import("../services/drillService.js"))
+                    .getUser(member.id);
+
+            if (!stored) {
+
+                return await interaction.reply({
+                    content:
+                        `❌ No registered data found for ${member}.`,
+                    ephemeral: true
+                });
+
+            }
+
             return await interaction.reply({
-
                 content:
-                    `ADMIN USER LOOKUP FOR <@${member.id}> IS CURRENTLY BEING CONNECTED TO THE DATABASE.`,
-
+                    `👤 **${user?.tag || member.tag}**\n\n` +
+                    `Primary: **${stored.primary_role || "Not set"}**\n` +
+                    `Secondary: **${stored.secondary_role || "Not set"}**\n` +
+                    `Registered: **${stored.registered_at || "Not available"}**\n` +
+                    `Current Streak: **${stored.current_streak || 0}**\n` +
+                    `Longest Streak: **${stored.longest_streak || 0}**\n` +
+                    `Last Completed Day: **${stored.last_completed_day || "None"}**`,
                 ephemeral: true
-
             });
 
         }
@@ -425,27 +498,22 @@ Change a registered player's Primary or Secondary gun role.
 
 
     // ========================================================
-    // BUTTON INTERACTIONS
+    // BUTTONS
     // ========================================================
 
     if (interaction.isButton()) {
 
-        // ----------------------------------------------------
-        // OCR SUBMIT BUTTONS
-        // ----------------------------------------------------
+        const customId =
+            interaction.customId;
+
+
+        // ====================================================
+        // OCR BUTTON
+        // ====================================================
 
         if (
-            interaction.customId.startsWith(
-                "drill_confirm_ocr:"
-            ) ||
-            interaction.customId.startsWith(
-                "drill_correct_ocr:"
-            ) ||
-            interaction.customId.startsWith(
-                "drill_cancel_ocr:"
-            ) ||
-            interaction.customId.startsWith(
-                "drill_manual_ocr:"
+            customId.startsWith(
+                "ocr:"
             )
         ) {
 
@@ -456,13 +524,13 @@ Change a registered player's Primary or Secondary gun role.
         }
 
 
-        // ----------------------------------------------------
-        // APPROVE DRILL
-        // ----------------------------------------------------
+        // ====================================================
+        // APPROVAL BUTTON
+        // ====================================================
 
         if (
-            interaction.customId.startsWith(
-                "drill_approve:"
+            customId.startsWith(
+                "approve:"
             )
         ) {
 
@@ -476,17 +544,22 @@ Change a registered player's Primary or Secondary gun role.
 
 
     // ========================================================
-    // MODAL INTERACTIONS
+    // MODALS
     // ========================================================
 
     if (interaction.isModalSubmit()) {
 
+        const customId =
+            interaction.customId;
+
+
+        // ====================================================
+        // OCR MODAL
+        // ====================================================
+
         if (
-            interaction.customId.startsWith(
-                "drill_correct_modal:"
-            ) ||
-            interaction.customId.startsWith(
-                "drill_manual_modal:"
+            customId.startsWith(
+                "ocr-modal:"
             )
         ) {
 
@@ -503,12 +576,21 @@ Change a registered player's Primary or Secondary gun role.
     // STRING SELECT MENUS
     // ========================================================
 
-    if (interaction.isStringSelectMenu()) {
+    if (
+        interaction.isStringSelectMenu()
+    ) {
+
+        const customId =
+            interaction.customId;
+
+
+        // ====================================================
+        // PRIMARY ROLE
+        // ====================================================
 
         if (
-            interaction.customId.startsWith(
-                "primary_role_select:"
-            )
+            customId ===
+            "primary-role"
         ) {
 
             return await handlePrimaryRole(
@@ -518,10 +600,13 @@ Change a registered player's Primary or Secondary gun role.
         }
 
 
+        // ====================================================
+        // SECONDARY ROLE
+        // ====================================================
+
         if (
-            interaction.customId.startsWith(
-                "secondary_role_select:"
-            )
+            customId ===
+            "secondary-role"
         ) {
 
             return await handleSecondaryRole(
@@ -531,15 +616,43 @@ Change a registered player's Primary or Secondary gun role.
         }
 
 
+        // ====================================================
+        // LIFETIME LEADERBOARD
+        // ====================================================
+
         if (
-            interaction.customId.startsWith(
+            customId.startsWith(
                 "leaderboard:"
             )
         ) {
 
+            const period =
+                customId.split(":")[1];
+
             return await showLeaderboard(
                 interaction,
-                interaction.values[0]
+                period
+            );
+
+        }
+
+
+        // ====================================================
+        // DRILLS LEADERBOARD
+        // ====================================================
+
+        if (
+            customId.startsWith(
+                "drills-leaderboard:"
+            )
+        ) {
+
+            const period =
+                interaction.values[0];
+
+            return await showDrillsLeaderboard(
+                interaction,
+                period
             );
 
         }

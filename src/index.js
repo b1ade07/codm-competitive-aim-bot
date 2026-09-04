@@ -9,6 +9,7 @@ import { config } from "./config.js";
 import "./database/database.js";
 
 import { handleInteraction } from "./interactions/handlers.js";
+import { startRetentionCleanup } from "./services/retentionService.js";
 
 
 const client = new Client({
@@ -44,6 +45,8 @@ client.once("ready", () => {
 
     console.log("Database: ONLINE");
     console.log("Discord: ONLINE");
+    startRetentionCleanup(client);
+
     console.log("Status: ONLINE");
 
     console.log("======================================");

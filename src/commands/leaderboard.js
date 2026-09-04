@@ -1,4 +1,4 @@
-import {
+﻿import {
     EmbedBuilder,
     ActionRowBuilder,
     StringSelectMenuBuilder
@@ -70,7 +70,7 @@ export async function startLeaderboard(
     const embed =
         new EmbedBuilder()
             .setTitle(
-                "🏆 AIM DRILLS LIFETIME LEADERBOARD"
+                "🎯 AIM DRILLS LIFETIME LEADERBOARD"
             )
             .setDescription(
                 "Select the statistic you want to view.\n\n" +
@@ -107,28 +107,28 @@ export async function showLeaderboard(
 
 
     // --------------------------------------------------------
-    // Allowed database columns
+    // Allowed categories
     // --------------------------------------------------------
 
-    const columns = {
+    const allowedCategories = {
 
         kills:
-            "AVG(kills)",
+            "KILLS",
 
         accuracy:
-            "AVG(accuracy)",
+            "ACCURACY",
 
         headshot_accuracy:
-            "AVG(headshot_accuracy)"
+            "HEADSHOT ACCURACY"
 
     };
 
 
-    const column =
-        columns[category];
+    const categoryName =
+        allowedCategories[category];
 
 
-    if (!column) {
+    if (!categoryName) {
 
         return await interaction.update({
 
@@ -145,12 +145,12 @@ export async function showLeaderboard(
 
 
     // --------------------------------------------------------
-    // Get APPROVED drills only
+    // Get lifetime statistics
     // --------------------------------------------------------
 
     const rows =
         dbQueryLeaderboard(
-            column
+            category
         );
 
 
@@ -219,31 +219,13 @@ export async function showLeaderboard(
 
 
     // --------------------------------------------------------
-    // Titles
-    // --------------------------------------------------------
-
-    const names = {
-
-        kills:
-            "KILLS",
-
-        accuracy:
-            "ACCURACY",
-
-        headshot_accuracy:
-            "HEADSHOT ACCURACY"
-
-    };
-
-
-    // --------------------------------------------------------
     // Create result embed
     // --------------------------------------------------------
 
     const embed =
         new EmbedBuilder()
             .setTitle(
-                `🏆 ${names[category]} LEADERBOARD`
+                `🎯 ${categoryName} LEADERBOARD`
             )
             .setDescription(
                 description
@@ -251,7 +233,7 @@ export async function showLeaderboard(
             .setFooter({
 
                 text:
-                    "Lifetime approved-drill averages • Never reset"
+                    "Lifetime approved-drill averages • Historical data retained"
 
             });
 
@@ -276,31 +258,112 @@ export async function showLeaderboard(
 // ============================================================
 // DATABASE LEADERBOARD QUERY
 // ============================================================
+//
+// Lifetime result =
+//     archived approved drills
+//     +
+//     currently retained approved drills
+//
+// This prevents the one-year retention cleanup from reducing
+// lifetime leaderboard statistics.
+// ============================================================
 
 function dbQueryLeaderboard(
-    column
+    category
 ) {
+
+    const valueExpression = {
+
+        kills:
+            "((COALESCE(archive.total_kills, 0) + COALESCE(current.total_kills, 0)) / NULLIF(COALESCE(archive.approved_count, 0) + COALESCE(current.approved_count, 0), 0))",
+
+        accuracy:
+            "((COALESCE(archive.total_accuracy, 0) + COALESCE(current.total_accuracy, 0)) / NULLIF(COALESCE(archive.approved_count, 0) + COALESCE(current.approved_count, 0), 0))",
+
+        headshot_accuracy:
+            "((COALESCE(archive.total_headshot_accuracy, 0) + COALESCE(current.total_headshot_accuracy, 0)) / NULLIF(COALESCE(archive.approved_count, 0) + COALESCE(current.approved_count, 0), 0))"
+
+    };
+
+
+    const expression =
+        valueExpression[category];
+
+
+    if (!expression) {
+
+        return [];
+
+    }
+
 
     return db.prepare(`
 
         SELECT
 
+            users.discord_id AS discord_id,
+
             users.username AS username,
 
-            ${column} AS value
+            ${expression} AS value
 
-        FROM drills
+        FROM users
 
-        INNER JOIN users
+        LEFT JOIN (
 
-            ON users.discord_id =
-                drills.discord_id
+            SELECT
 
-        WHERE drills.status =
-            'APPROVED'
+                discord_id,
 
-        GROUP BY
-            drills.discord_id
+                approved_count,
+
+                total_kills,
+
+                total_accuracy,
+
+                total_headshot_accuracy
+
+            FROM lifetime_drill_stats
+
+        ) AS archive
+
+            ON archive.discord_id =
+                users.discord_id
+
+        LEFT JOIN (
+
+            SELECT
+
+                discord_id,
+
+                COUNT(*) AS approved_count,
+
+                COALESCE(SUM(kills), 0) AS total_kills,
+
+                COALESCE(SUM(accuracy), 0) AS total_accuracy,
+
+                COALESCE(SUM(headshot_accuracy), 0) AS total_headshot_accuracy
+
+            FROM drills
+
+            WHERE status =
+                'APPROVED'
+
+            GROUP BY
+                discord_id
+
+        ) AS current
+
+            ON current.discord_id =
+                users.discord_id
+
+        WHERE
+
+            COALESCE(archive.approved_count, 0) +
+
+            COALESCE(current.approved_count, 0) >
+
+            0
 
         ORDER BY
             value DESC

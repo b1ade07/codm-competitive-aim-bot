@@ -1,4 +1,4 @@
-import crypto from "crypto";
+﻿import crypto from "crypto";
 
 import db from "../database/database.js";
 import { getDailyCycle } from "../utils/dailyCycle.js";
@@ -28,7 +28,6 @@ export function createOrUpdateUser(
     const existing =
         getUser(discordId);
 
-
     if (!existing) {
 
         db.prepare(`
@@ -44,7 +43,6 @@ export function createOrUpdateUser(
 
         return;
     }
-
 
     db.prepare(`
         UPDATE users
@@ -74,10 +72,8 @@ export function registerRoles(
         username
     );
 
-
     const existing =
         getUser(discordId);
-
 
     if (
         existing.primary_role ||
@@ -90,7 +86,6 @@ export function registerRoles(
         };
 
     }
-
 
     db.prepare(`
         UPDATE users
@@ -105,7 +100,6 @@ export function registerRoles(
         new Date().toISOString(),
         discordId
     );
-
 
     return {
         success: true
@@ -134,7 +128,6 @@ export function getDailyProgress(
             dayKey
         );
 
-
     if (!progress) {
 
         db.prepare(`
@@ -152,7 +145,6 @@ export function getDailyProgress(
             dayKey
         );
 
-
         progress =
             db.prepare(`
                 SELECT *
@@ -166,7 +158,6 @@ export function getDailyProgress(
 
     }
 
-
     return progress;
 
 }
@@ -176,16 +167,8 @@ export function getDailyProgress(
 // DAILY SUBMISSION COUNT
 // ============================================================
 //
-// IMPORTANT:
-//
-// This is deliberately based on drills already submitted,
-// not only APPROVED drills.
-//
-// PENDING + APPROVED = accepted daily submissions.
-//
-// REJECTED drills do not consume one of the four slots.
-//
-// This protects the new hard 4/day upload limit.
+// PENDING + APPROVED consume one of the four daily slots.
+// REJECTED drills do not consume a slot.
 // ============================================================
 
 export function getDailySubmissionCount(
@@ -204,7 +187,6 @@ export function getDailySubmissionCount(
             discordId,
             dayKey
         );
-
 
     return Number(
         result?.total || 0
@@ -227,7 +209,6 @@ export function canSubmitDailyDrill(
             discordId,
             dayKey
         );
-
 
     return {
         allowed: count < 4,
@@ -265,7 +246,6 @@ function makeFingerprint(
         Number(headshotAccuracy).toFixed(2)
     ].join("|");
 
-
     return crypto
         .createHash("sha256")
         .update(raw)
@@ -295,7 +275,6 @@ export function submitDrill({
     const dayKey =
         getDailyCycle();
 
-
     const fingerprint =
         makeFingerprint(
             discordId,
@@ -320,7 +299,6 @@ export function submitDrill({
             fingerprint
         );
 
-
     if (duplicate) {
 
         return {
@@ -333,12 +311,6 @@ export function submitDrill({
 
     // --------------------------------------------------------
     // DATABASE TRANSACTION
-    // --------------------------------------------------------
-    //
-    // The daily limit is checked immediately before INSERT.
-    //
-    // SQLite serializes this transaction, preventing two
-    // simultaneous requests from bypassing the 4-drill limit.
     // --------------------------------------------------------
 
     const transaction =
@@ -355,7 +327,6 @@ export function submitDrill({
                     discordId,
                     dayKey
                 );
-
 
             const count =
                 Number(
@@ -388,7 +359,6 @@ export function submitDrill({
                     discordId,
                     dayKey
                 );
-
 
             if (
                 roleType === "PRIMARY" &&
@@ -471,7 +441,6 @@ export function submitDrill({
                     new Date().toISOString()
                 );
 
-
             return {
                 success: true,
                 drillId:
@@ -482,7 +451,6 @@ export function submitDrill({
             };
 
         });
-
 
     return transaction();
 
@@ -507,7 +475,6 @@ export function approveDrill(
             drillId
         );
 
-
     if (!drill) {
 
         return {
@@ -516,7 +483,6 @@ export function approveDrill(
         };
 
     }
-
 
     if (
         drill.status !== "PENDING"
@@ -528,7 +494,6 @@ export function approveDrill(
         };
 
     }
-
 
     const transaction =
         db.transaction(() => {
@@ -546,21 +511,17 @@ export function approveDrill(
                 drillId
             );
 
-
             const progress =
                 getDailyProgress(
                     drill.discord_id,
                     drill.day_key
                 );
 
-
             let primary =
                 progress.primary_count;
 
-
             let secondary =
                 progress.secondary_count;
-
 
             if (
                 drill.role_type === "PRIMARY"
@@ -570,7 +531,6 @@ export function approveDrill(
 
             }
 
-
             if (
                 drill.role_type === "SECONDARY"
             ) {
@@ -579,17 +539,14 @@ export function approveDrill(
 
             }
 
-
             const total =
                 primary + secondary;
-
 
             const completed =
                 primary >= 2 &&
                 secondary >= 2
                     ? 1
                     : 0;
-
 
             db.prepare(`
                 UPDATE daily_progress
@@ -609,7 +566,6 @@ export function approveDrill(
                 drill.day_key
             );
 
-
             if (completed) {
 
                 updateStreak(
@@ -621,9 +577,7 @@ export function approveDrill(
 
         });
 
-
     transaction();
-
 
     return {
         success: true,
@@ -651,7 +605,6 @@ export function rejectDrill(
             drillId
         );
 
-
     if (!drill) {
 
         return {
@@ -660,7 +613,6 @@ export function rejectDrill(
         };
 
     }
-
 
     if (
         drill.status !== "PENDING"
@@ -673,7 +625,6 @@ export function rejectDrill(
 
     }
 
-
     db.prepare(`
         UPDATE drills
         SET
@@ -685,11 +636,527 @@ export function rejectDrill(
         drillId
     );
 
-
     return {
         success: true,
         drill
     };
+
+}
+
+
+// ============================================================
+// RECALCULATE DAILY PROGRESS
+// ============================================================
+//
+// Used after an APPROVED drill is deleted.
+// Counts are rebuilt from the actual remaining APPROVED drills.
+// This prevents incorrect decrementing and protects consistency.
+// ============================================================
+
+function recalculateDailyProgress(
+    discordId,
+    dayKey
+) {
+
+    const counts =
+        db.prepare(`
+            SELECT
+                SUM(
+                    CASE
+                        WHEN role_type = 'PRIMARY'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS primary_count,
+
+                SUM(
+                    CASE
+                        WHEN role_type = 'SECONDARY'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS secondary_count
+
+            FROM drills
+
+            WHERE discord_id = ?
+            AND day_key = ?
+            AND status = 'APPROVED'
+        `).get(
+            discordId,
+            dayKey
+        );
+
+    const primary =
+        Number(
+            counts?.primary_count || 0
+        );
+
+    const secondary =
+        Number(
+            counts?.secondary_count || 0
+        );
+
+    const total =
+        primary + secondary;
+
+    const completed =
+        primary >= 2 &&
+        secondary >= 2
+            ? 1
+            : 0;
+
+
+    const existing =
+        db.prepare(`
+            SELECT discord_id
+            FROM daily_progress
+            WHERE discord_id = ?
+            AND day_key = ?
+        `).get(
+            discordId,
+            dayKey
+        );
+
+
+    if (existing) {
+
+        db.prepare(`
+            UPDATE daily_progress
+            SET
+                primary_count = ?,
+                secondary_count = ?,
+                total_count = ?,
+                completed = ?
+            WHERE discord_id = ?
+            AND day_key = ?
+        `).run(
+            primary,
+            secondary,
+            total,
+            completed,
+            discordId,
+            dayKey
+        );
+
+    } else {
+
+        db.prepare(`
+            INSERT INTO daily_progress (
+                discord_id,
+                day_key,
+                primary_count,
+                secondary_count,
+                total_count,
+                completed
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+        `).run(
+            discordId,
+            dayKey,
+            primary,
+            secondary,
+            total,
+            completed
+        );
+
+    }
+
+
+    return {
+        primary,
+        secondary,
+        total,
+        completed
+    };
+
+}
+
+
+// ============================================================
+// RECALCULATE USER STREAK
+// ============================================================
+//
+// Rebuilds streak history from actual completed days.
+//
+// A completed day means:
+// PRIMARY >= 2 AND SECONDARY >= 2.
+//
+// Existing users are never deleted.
+// Only their streak fields are recalculated.
+// ============================================================
+
+function recalculateUserStreak(
+    discordId
+) {
+
+    const rows =
+        db.prepare(`
+            SELECT
+                day_key,
+                SUM(
+                    CASE
+                        WHEN role_type = 'PRIMARY'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS primary_count,
+                SUM(
+                    CASE
+                        WHEN role_type = 'SECONDARY'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS secondary_count
+            FROM drills
+            WHERE discord_id = ?
+            AND status = 'APPROVED'
+            GROUP BY day_key
+            ORDER BY day_key ASC
+        `).all(
+            discordId
+        );
+
+
+    const completedDays =
+        rows
+            .filter(row =>
+                Number(row.primary_count || 0) >= 2 &&
+                Number(row.secondary_count || 0) >= 2
+            )
+            .map(row => row.day_key);
+
+
+    if (completedDays.length === 0) {
+
+        db.prepare(`
+            UPDATE users
+            SET
+                current_streak = 0,
+                longest_streak = 0,
+                last_completed_day = NULL
+            WHERE discord_id = ?
+        `).run(
+            discordId
+        );
+
+        return {
+            current: 0,
+            longest: 0,
+            lastCompletedDay: null
+        };
+
+    }
+
+
+    let longest = 1;
+    let running = 1;
+
+    for (
+        let i = 1;
+        i < completedDays.length;
+        i++
+    ) {
+
+        const previous =
+            new Date(
+                `${completedDays[i - 1]}T03:00:00+05:30`
+            );
+
+        const current =
+            new Date(
+                `${completedDays[i]}T03:00:00+05:30`
+            );
+
+        const difference =
+            Math.round(
+                (
+                    current - previous
+                ) /
+                (1000 * 60 * 60 * 24)
+            );
+
+
+        if (difference === 1) {
+
+            running++;
+
+        } else {
+
+            running = 1;
+
+        }
+
+
+        longest =
+            Math.max(
+                longest,
+                running
+            );
+
+    }
+
+
+    const lastCompletedDay =
+        completedDays[
+            completedDays.length - 1
+        ];
+
+
+    // Recalculate the streak ending at the latest completed day.
+    let currentStreak = 1;
+
+    for (
+        let i = completedDays.length - 1;
+        i > 0;
+        i--
+    ) {
+
+        const previous =
+            new Date(
+                `${completedDays[i - 1]}T03:00:00+05:30`
+            );
+
+        const current =
+            new Date(
+                `${completedDays[i]}T03:00:00+05:30`
+            );
+
+        const difference =
+            Math.round(
+                (
+                    current - previous
+                ) /
+                (1000 * 60 * 60 * 24)
+            );
+
+
+        if (difference === 1) {
+
+            currentStreak++;
+
+        } else {
+
+            break;
+
+        }
+
+    }
+
+
+    // Match the existing breakStreakIfNeeded behaviour:
+    // if the latest completed day is more than one cycle behind,
+    // the current streak is considered broken.
+    const currentDay =
+        getDailyCycle();
+
+    const last =
+        new Date(
+            `${lastCompletedDay}T03:00:00+05:30`
+        );
+
+    const today =
+        new Date(
+            `${currentDay}T03:00:00+05:30`
+        );
+
+    const daysSinceLast =
+        Math.round(
+            (
+                today - last
+            ) /
+            (1000 * 60 * 60 * 24)
+        );
+
+
+    if (daysSinceLast > 1) {
+
+        currentStreak = 0;
+
+    }
+
+
+    db.prepare(`
+        UPDATE users
+        SET
+            current_streak = ?,
+            longest_streak = ?,
+            last_completed_day = ?
+        WHERE discord_id = ?
+    `).run(
+        currentStreak,
+        longest,
+        lastCompletedDay,
+        discordId
+    );
+
+
+    return {
+        current: currentStreak,
+        longest,
+        lastCompletedDay
+    };
+
+}
+
+
+// ============================================================
+// DELETE APPROVED DRILL
+// ============================================================
+//
+// Safety rules:
+//
+// 1. Drill ID must exist.
+// 2. Drill must belong to the requesting user.
+// 3. Drill must be APPROVED.
+// 4. Only that exact drill is deleted.
+// 5. Daily progress is rebuilt from remaining APPROVED drills.
+// 6. User streak is rebuilt from remaining completed days.
+// 7. USERS records are never deleted.
+// ============================================================
+
+export function deleteApprovedDrill(
+    discordId,
+    drillId
+) {
+
+    const numericDrillId =
+        Number(drillId);
+
+
+    if (
+        !Number.isInteger(numericDrillId) ||
+        numericDrillId <= 0
+    ) {
+
+        return {
+            success: false,
+            reason: "INVALID_DRILL_ID"
+        };
+
+    }
+
+
+    const drill =
+        db.prepare(`
+            SELECT *
+            FROM drills
+            WHERE id = ?
+        `).get(
+            numericDrillId
+        );
+
+
+    if (!drill) {
+
+        return {
+            success: false,
+            reason: "NOT_FOUND"
+        };
+
+    }
+
+
+    if (
+        drill.discord_id !== discordId
+    ) {
+
+        return {
+            success: false,
+            reason: "NOT_OWNER"
+        };
+
+    }
+
+
+    if (
+        drill.status !== "APPROVED"
+    ) {
+
+        return {
+            success: false,
+            reason: "NOT_APPROVED"
+        };
+
+    }
+
+
+    const transaction =
+        db.transaction(() => {
+
+            const current =
+                db.prepare(`
+                    SELECT *
+                    FROM drills
+                    WHERE id = ?
+                    AND discord_id = ?
+                    AND status = 'APPROVED'
+                `).get(
+                    numericDrillId,
+                    discordId
+                );
+
+
+            if (!current) {
+
+                return {
+                    success: false,
+                    reason: "NOT_APPROVED"
+                };
+
+            }
+
+
+            const deleted =
+                db.prepare(`
+                    DELETE FROM drills
+                    WHERE id = ?
+                    AND discord_id = ?
+                    AND status = 'APPROVED'
+                `).run(
+                    numericDrillId,
+                    discordId
+                );
+
+
+            if (
+                deleted.changes !== 1
+            ) {
+
+                return {
+                    success: false,
+                    reason: "DELETE_FAILED"
+                };
+
+            }
+
+
+            // Rebuild the exact affected daily progress.
+            const progress =
+                recalculateDailyProgress(
+                    discordId,
+                    current.day_key
+                );
+
+
+            // Rebuild streaks from remaining approved history.
+            const streak =
+                recalculateUserStreak(
+                    discordId
+                );
+
+
+            return {
+                success: true,
+                drill: current,
+                progress,
+                streak
+            };
+
+        });
+
+
+    return transaction();
 
 }
 
