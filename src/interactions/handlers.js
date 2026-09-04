@@ -1,4 +1,4 @@
-﻿import {
+import {
     PermissionFlagsBits
 } from "discord.js";
 
@@ -87,7 +87,7 @@ export async function handleInteraction(
                 );
 
             let message = `
-**?? COD:M AIM DRILLS — COMMAND GUIDE**
+**\u{1F3AF} COD:M AIM DRILLS — COMMAND GUIDE**
 
 **NORMAL MEMBER COMMANDS**
 
@@ -129,7 +129,7 @@ Secondary: **2 drills**
 Total: **4 drills**
 
 Daily cycle:
-**03:00 AM IST ? 03:00 AM IST**
+**03:00 AM IST \u{2192} 03:00 AM IST**
 
 Only approved drills count toward progress.
 `;
@@ -508,13 +508,14 @@ Correct a player's permanent Primary or Secondary gun role.
 
 
         // ====================================================
-        // OCR BUTTON
+        // OCR BUTTONS
         // ====================================================
 
         if (
-            customId.startsWith(
-                "ocr:"
-            )
+            customId.startsWith("drill_confirm_ocr:") ||
+            customId.startsWith("drill_correct_ocr:") ||
+            customId.startsWith("drill_cancel_ocr:") ||
+            customId.startsWith("drill_manual_ocr:")
         ) {
 
             return await handleOCRButton(
@@ -529,9 +530,7 @@ Correct a player's permanent Primary or Secondary gun role.
         // ====================================================
 
         if (
-            customId.startsWith(
-                "approve:"
-            )
+            customId.startsWith("drill_approve:")
         ) {
 
             return await handleApproval(
@@ -554,13 +553,12 @@ Correct a player's permanent Primary or Secondary gun role.
 
 
         // ====================================================
-        // OCR MODAL
+        // OCR CORRECTION / MANUAL MODALS
         // ====================================================
 
         if (
-            customId.startsWith(
-                "ocr-modal:"
-            )
+            customId.startsWith("drill_correct_modal:") ||
+            customId.startsWith("drill_manual_modal:")
         ) {
 
             return await handleOCRModal(
@@ -570,7 +568,6 @@ Correct a player's permanent Primary or Secondary gun role.
         }
 
     }
-
 
     // ========================================================
     // STRING SELECT MENUS
@@ -618,6 +615,7 @@ Correct a player's permanent Primary or Secondary gun role.
         }
 
 
+
         // ====================================================
         // LIFETIME LEADERBOARD
         // ====================================================
@@ -628,15 +626,16 @@ Correct a player's permanent Primary or Secondary gun role.
             )
         ) {
 
-            const period =
-                customId.split(":")[1];
+            const category =
+                interaction.values[0];
 
             return await showLeaderboard(
                 interaction,
-                period
+                category
             );
 
         }
+
 
 
         // ====================================================
@@ -662,4 +661,3 @@ Correct a player's permanent Primary or Secondary gun role.
     }
 
 }
-
