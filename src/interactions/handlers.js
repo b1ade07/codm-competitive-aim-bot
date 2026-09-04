@@ -1,4 +1,4 @@
-import {
+ï»¿import {
     PermissionFlagsBits
 } from "discord.js";
 
@@ -87,7 +87,7 @@ export async function handleInteraction(
                 );
 
             let message = `
-**?? COD:M AIM DRILLS — COMMAND GUIDE**
+**?? COD:M AIM DRILLS â€” COMMAND GUIDE**
 
 **NORMAL MEMBER COMMANDS**
 
@@ -99,10 +99,10 @@ View your registered gun roles.
 
 \`/submit-drill\`
 Submit your AIM drill screenshot and manually enter:
-• Total Number of Kills
-• Accuracy
-• Headshot Accuracy
-• PRIMARY / SECONDARY
+â€¢ Total Number of Kills
+â€¢ Accuracy
+â€¢ Headshot Accuracy
+â€¢ PRIMARY / SECONDARY
 
 \`/leaderboard\`
 View the lifetime AIM DRILLS leaderboard.
