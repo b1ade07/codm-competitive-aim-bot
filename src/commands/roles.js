@@ -11,50 +11,69 @@ export async function showRoles(
     interaction
 ) {
 
-    const user =
-        getUser(
-            interaction.user.id
-        );
+    try {
 
-    if (
-        !user ||
-        !user.primary_role ||
-        !user.secondary_role
-    ) {
-
-        await interaction.reply({
-            content:
-                "❌ YOU HAVE NOT REGISTERED YOUR GUN ROLES YET.\n\n" +
-                "Use `/setup-roles` first."
-        });
-
-        return;
-    }
-
-    const embed =
-        new EmbedBuilder()
-            .setTitle(
-                `🎯 ${interaction.user.username.toUpperCase()}'S GUN ROLES`
-            )
-            .setDescription(
-                `**PRIMARY GUN ROLE**\n` +
-                `🎯 ${user.primary_role}\n\n` +
-
-                `**SECONDARY GUN ROLE**\n` +
-                `🔫 ${user.secondary_role}\n\n` +
-
-                `━━━━━━━━━━━━━━━━━━━━\n\n` +
-
-                `U HAVE SELECTED **${user.primary_role}** ` +
-                `AS YOUR PRIMARY GUN ROLE AND ` +
-                `**${user.secondary_role}** ` +
-                `AS YOUR SECONDARY GUN ROLE.\n\n` +
-
-                `A FUTURE PRO IS IN THE MAKING. 🔥\n` +
-                `ALL THE BEST AND KEEP GRINDING!`
+        const user =
+            getUser(
+                interaction.user.id
             );
 
-    await interaction.reply({
-        embeds: [embed]
-    });
+
+        if (
+            !user ||
+            !user.primary_role ||
+            !user.secondary_role
+        ) {
+
+            return await interaction.reply({
+                content:
+                    "?? **NO GUN ROLES ARE REGISTERED FOR YOU YET.**\n\n" +
+                    "Use `/setup-roles` to register your Primary and Secondary gun roles."
+            });
+
+        }
+
+
+        const embed =
+            new EmbedBuilder()
+                .setTitle("?? YOUR REGISTERED GUN ROLES")
+                .setDescription(
+                    `?? **Player:** ${interaction.user}\n\n` +
+                    `?? **PRIMARY:** ${user.primary_role}\n` +
+                    `?? **SECONDARY:** ${user.secondary_role}\n\n` +
+                    "?? **THESE ROLES ARE PERMANENT AND CANNOT BE CHANGED.**\n\n" +
+                    "A FUTURE PRO IS IN THE MAKING. ??\n" +
+                    "ALL THE BEST AND KEEP GRINDING!"
+                );
+
+
+        return await interaction.reply({
+            embeds: [
+                embed
+            ]
+        });
+
+
+    } catch (error) {
+
+        console.error(
+            "ROLES COMMAND ERROR:",
+            error
+        );
+
+
+        if (
+            !interaction.replied &&
+            !interaction.deferred
+        ) {
+
+            return await interaction.reply({
+                content:
+                    "? **COULD NOT LOAD YOUR REGISTERED GUN ROLES.**"
+            });
+
+        }
+
+    }
+
 }

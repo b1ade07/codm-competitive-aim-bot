@@ -1,4 +1,4 @@
-﻿import {
+import {
     PermissionFlagsBits
 } from "discord.js";
 
@@ -87,7 +87,7 @@ export async function handleInteraction(
                 );
 
             let message = `
-**🎯 COD:M AIM DRILLS — COMMAND GUIDE**
+**?? COD:M AIM DRILLS � COMMAND GUIDE**
 
 **NORMAL MEMBER COMMANDS**
 
@@ -99,10 +99,10 @@ View your registered gun roles.
 
 \`/submit-drill\`
 Submit your AIM drill screenshot and manually enter:
-• Total Number of Kills
-• Accuracy
-• Headshot Accuracy
-• PRIMARY / SECONDARY
+� Total Number of Kills
+� Accuracy
+� Headshot Accuracy
+� PRIMARY / SECONDARY
 
 \`/leaderboard\`
 View the lifetime AIM DRILLS leaderboard.
@@ -129,7 +129,7 @@ Secondary: **2 drills**
 Total: **4 drills**
 
 Daily cycle:
-**03:00 AM IST → 03:00 AM IST**
+**03:00 AM IST ? 03:00 AM IST**
 
 Only approved drills count toward progress.
 `;
@@ -211,7 +211,7 @@ Correct a player's permanent Primary or Secondary gun role.
                 return await interaction.reply({
 
                     content:
-                        `THIS COMMAND CAN ONLY BE USED IN <#${config.aimDrillsChannelId}> 🎯`,
+                        `THIS COMMAND CAN ONLY BE USED IN <#${config.aimDrillsChannelId}> ??`,
 
                     ephemeral: true
 
@@ -327,7 +327,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
                 return await interaction.reply({
                     content:
-                        "❌ Administrator permission required.",
+                        "? Administrator permission required.",
                     ephemeral: true
                 });
 
@@ -348,7 +348,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
                 return await interaction.reply({
                     content:
-                        `❌ Could not approve Drill ID **${drillId}**.\nReason: **${result.reason}**`,
+                        `? Could not approve Drill ID **${drillId}**.\nReason: **${result.reason}**`,
                     ephemeral: true
                 });
 
@@ -356,7 +356,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
             return await interaction.reply({
                 content:
-                    `✅ Drill ID **${drillId}** has been approved.`,
+                    `? Drill ID **${drillId}** has been approved.`,
                 ephemeral: false
             });
 
@@ -377,7 +377,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
                 return await interaction.reply({
                     content:
-                        "❌ Administrator permission required.",
+                        "? Administrator permission required.",
                     ephemeral: true
                 });
 
@@ -403,7 +403,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
                 return await interaction.reply({
                     content:
-                        `❌ Could not reject Drill ID **${drillId}**.\nReason: **${result.reason}**`,
+                        `? Could not reject Drill ID **${drillId}**.\nReason: **${result.reason}**`,
                     ephemeral: true
                 });
 
@@ -411,7 +411,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
             return await interaction.reply({
                 content:
-                    `❌ Drill ID **${drillId}** rejected.` +
+                    `? Drill ID **${drillId}** rejected.` +
                     (
                         reason
                             ? `\nReason: ${reason}`
@@ -437,7 +437,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
                 return await interaction.reply({
                     content:
-                        "❌ Administrator permission required.",
+                        "? Administrator permission required.",
                     ephemeral: true
                 });
 
@@ -461,7 +461,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
                 return await interaction.reply({
                     content:
-                        `❌ No registered data found for ${member}.`,
+                        `? No registered data found for ${member}.`,
                     ephemeral: true
                 });
 
@@ -469,7 +469,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
             return await interaction.reply({
                 content:
-                    `👤 **${user?.tag || member.tag}**\n\n` +
+                    `?? **${user?.tag || member.tag}**\n\n` +
                     `Primary: **${stored.primary_role || "Not set"}**\n` +
                     `Secondary: **${stored.secondary_role || "Not set"}**\n` +
                     `Registered: **${stored.registered_at || "Not available"}**\n` +
@@ -589,8 +589,9 @@ Correct a player's permanent Primary or Secondary gun role.
         // ====================================================
 
         if (
-            customId ===
-            "primary-role"
+            customId.startsWith(
+                "primary_role_select:"
+            )
         ) {
 
             return await handlePrimaryRole(
@@ -605,8 +606,9 @@ Correct a player's permanent Primary or Secondary gun role.
         // ====================================================
 
         if (
-            customId ===
-            "secondary-role"
+            customId.startsWith(
+                "secondary_role_select:"
+            )
         ) {
 
             return await handleSecondaryRole(
@@ -660,3 +662,4 @@ Correct a player's permanent Primary or Secondary gun role.
     }
 
 }
+
