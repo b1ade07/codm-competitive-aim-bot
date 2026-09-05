@@ -26,6 +26,7 @@ import {
 
 import { runOCR } from "../ocr/ocrService.js";
 import { parseCodmStats } from "../ocr/codmParser.js";
+import { config } from "../config.js";
 
 import database from "../database/database.js";
 
@@ -1713,8 +1714,10 @@ async function createSubmission(
 
     try {
 
+        const publicChannel = await interaction.client.channels.fetch(config.aimDrillsChannelId);
+
         message =
-            await interaction.channel.send({
+            await publicChannel.send({
 
                 embeds: [
                     embed
@@ -2018,7 +2021,7 @@ export async function handleApproval(interaction) {
                 .setFooter({
 
                     text:
-                        `Drill ID: ${drillId} • APPROVED`
+                        `Drill ID: ${drillId} \u{2022} APPROVED`
 
                 });
 
@@ -2070,7 +2073,7 @@ export async function handleApproval(interaction) {
 
                 `\u{2705} 4/4 DRILLS COMPLETE, <@${ownerId}>!\n` +
 
-                "\u{1F3C6} MISSION ACCOMPLISHED — YOU GAVE IT YOUR ALL TODAY!\n" +
+                "\u{1F3C6} MISSION ACCOMPLISHED ï¿½ YOU GAVE IT YOUR ALL TODAY!\n" +
 
                 "\u{1F4AA} KEEP GRINDING, AIM SHARP, AND COME BACK STRONGER TOMORROW!"
 
