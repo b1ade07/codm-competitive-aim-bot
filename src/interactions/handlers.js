@@ -512,7 +512,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
             return await interaction.reply({
                 content:
-                    `\U0001F464 **${user?.tag || member.tag}**\n\n` +
+                    `\u{1F464} **${user?.tag || member.tag}**\n\n` +
                     `Primary: **${stored.primary_role || "Not set"}**\n` +
                     `Secondary: **${stored.secondary_role || "Not set"}**\n` +
                     `Registered: **${stored.registered_at || "Not available"}**\n` +

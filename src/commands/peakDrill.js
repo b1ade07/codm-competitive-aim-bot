@@ -47,7 +47,7 @@ export async function handlePeakDrill(interaction) {
     ) {
         return await interaction.reply({
             content:
-                `\U0001F4CA **${year} PEAK DRILL**\n\n` +
+                `\u{1F4CA} **${year} PEAK DRILL**\n\n` +
                 "No approved drills found for the current year.",
             ephemeral: true
         });
@@ -56,26 +56,26 @@ export async function handlePeakDrill(interaction) {
     const embed =
         new EmbedBuilder()
             .setTitle(
-                `\U0001F3C6 ${year} PEAK DRILL`
+                `\u{1F3C6} ${year} PEAK DRILL`
             )
             .setDescription(
                 `Your highest approved drill achievements for **${year}**.`
             )
             .addFields(
                 {
-                    name: "\U0001F480 PEAK KILLS",
+                    name: "\u{1F480} PEAK KILLS",
                     value:
                         `${Number(peak.peak_kills || 0).toFixed(0)}`,
                     inline: true
                 },
                 {
-                    name: "\U0001F3AF PEAK ACCURACY",
+                    name: "\u{1F3AF} PEAK ACCURACY",
                     value:
                         `${Number(peak.peak_accuracy || 0).toFixed(2)}%`,
                     inline: true
                 },
                 {
-                    name: "\U0001F4A5 PEAK HEADSHOT ACCURACY",
+                    name: "\u{1F4A5} PEAK HEADSHOT ACCURACY",
                     value:
                         `${Number(peak.peak_headshot_accuracy || 0).toFixed(2)}%`,
                     inline: true

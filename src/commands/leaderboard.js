@@ -80,12 +80,12 @@ export async function startLeaderboard(
     const embed =
         new EmbedBuilder()
             .setTitle(
-                "\U0001F3C6 AIM DRILLS LIFETIME LEADERBOARD"
+                "\u{1F3C6} AIM DRILLS LIFETIME LEADERBOARD"
             )
             .setDescription(
                 "Select the statistic you want to view.\n\n" +
 
-                "\U0001F4CA Leaderboards are based on **APPROVED DRILLS ONLY**.\n" +
+                "\u{1F4CA} Leaderboards are based on **APPROVED DRILLS ONLY**.\n" +
 
                 "\u267E\uFE0F Historical data is never reset."
             );
@@ -242,7 +242,7 @@ export async function showLeaderboard(
     const embed =
         new EmbedBuilder()
             .setTitle(
-                `\U0001F3C6 ${categoryName} LEADERBOARD`
+                `\u{1F3C6} ${categoryName} LEADERBOARD`
             )
             .setDescription(
                 description

@@ -96,11 +96,11 @@ export async function handleAdminDeleteUploadedData(interaction) {
         content:
             `\u2705 **Drill ID ${drillId} deleted by admin.**\n\n` +
             `User: <@${drill.discord_id}>\n` +
-            `\U0001F4CA Progress: **${result.progress.total}/4**\n` +
-            `\U0001F525 Current streak: **${result.streak.current} day(s)**\n` +
-            `\U0001F3C5 Longest streak: **${result.streak.longest} day(s)**\n` +
+            `\u{1F4CA} Progress: **${result.progress.total}/4**\n` +
+            `\u{1F525} Current streak: **${result.streak.current} day(s)**\n` +
+            `\u{1F3C5} Longest streak: **${result.streak.longest} day(s)**\n` +
             `${messageDeleted
-                ? "\U0001F5D1\uFE0F Public drill result removed."
+                ? "\u{1F5D1}\u{FE0F} Public drill result removed."
                 : "\u2139\uFE0F Database drill deleted; public result unavailable."}`,
         ephemeral: true
     });

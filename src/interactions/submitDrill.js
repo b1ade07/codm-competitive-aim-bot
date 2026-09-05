@@ -301,7 +301,7 @@ export async function startSubmitDrill(interaction) {
         await interaction.editReply({
 
             content:
-                "?? **READING YOUR COD:M SCREENSHOT...**\n\n" +
+                "\u{1F4F8} **READING YOUR COD:M SCREENSHOT...**\n\n" +
                 "Please wait..."
 
         });
@@ -389,7 +389,7 @@ export async function startSubmitDrill(interaction) {
 
                 content:
 
-                    "?? **I COULDN'T READ THE COD:M STATISTICS.**\n\n" +
+                    "\u{274C} **I COULDN'T READ THE COD:M STATISTICS.**\n\n" +
                     "You can enter the values manually.",
 
                 components: [
@@ -464,7 +464,7 @@ export async function startSubmitDrill(interaction) {
 
                 content:
 
-                    "?? **THE OCR VALUES COULD NOT BE VALIDATED.**\n\n" +
+                    "\u{274C} **THE OCR VALUES COULD NOT BE VALIDATED.**\n\n" +
                     "You can enter the values manually.",
 
                 components: [
@@ -590,15 +590,15 @@ export async function startSubmitDrill(interaction) {
 
             content:
 
-                "?? **OCR COMPLETE**\n\n" +
+                "\u{2705} **OCR COMPLETE**\n\n" +
 
-                `?? **Kills:** ${stats.kills}\n` +
+                `\u{1F480} **Kills:** ${stats.kills}\n` +
 
-                `?? **Accuracy:** ${Number(
+                `\u{1F3AF} **Accuracy:** ${Number(
                     stats.accuracy
                 ).toFixed(2)}%\n` +
 
-                `?? **Headshot Accuracy:** ${Number(
+                `\u{1F4A5} **Headshot Accuracy:** ${Number(
                     stats.headshotAccuracy
                 ).toFixed(2)}%\n\n` +
 
@@ -1521,7 +1521,7 @@ async function createSubmission(
         new EmbedBuilder()
 
             .setTitle(
-                "?? AIM DRILL SUBMISSION"
+                "\u{1F3AF} AIM DRILL SUBMISSION"
             )
 
             .setDescription(
@@ -1541,7 +1541,7 @@ async function createSubmission(
                 {
 
                     name:
-                        "?? TOTAL KILLS",
+                        "\u{1F480} TOTAL KILLS",
 
                     value:
                         `${totalKills}`,
@@ -1554,7 +1554,7 @@ async function createSubmission(
                 {
 
                     name:
-                        "?? ACCURACY",
+                        "\u{1F3AF} ACCURACY",
 
                     value:
                         `${Number(
@@ -1569,7 +1569,7 @@ async function createSubmission(
                 {
 
                     name:
-                        "?? HEADSHOT ACCURACY",
+                        "\u{1F4A5} HEADSHOT ACCURACY",
 
                     value:
                         `${Number(
@@ -1931,7 +1931,7 @@ export async function handleApproval(interaction) {
             new EmbedBuilder()
 
                 .setTitle(
-                    "?? AIM DRILL SUBMISSION"
+                    "\u{1F3AF} AIM DRILL SUBMISSION"
                 )
 
                 .setDescription(
@@ -1951,7 +1951,7 @@ export async function handleApproval(interaction) {
                     {
 
                         name:
-                            "?? TOTAL KILLS",
+                            "\u{1F480} TOTAL KILLS",
 
                         value:
                             `${drill.kills}`,
@@ -1964,7 +1964,7 @@ export async function handleApproval(interaction) {
                     {
 
                         name:
-                            "?? ACCURACY",
+                            "\u{1F3AF} ACCURACY",
 
                         value:
                             `${Number(
@@ -1979,7 +1979,7 @@ export async function handleApproval(interaction) {
                     {
 
                         name:
-                            "?? HEADSHOT ACCURACY",
+                            "\u{1F4A5} HEADSHOT ACCURACY",
 
                         value:
                             `${Number(
@@ -1994,7 +1994,7 @@ export async function handleApproval(interaction) {
                     {
 
                         name:
-                            "?? DAILY PROGRESS",
+                            "\u{1F4CA} DAILY PROGRESS",
 
                         value:
 
@@ -2049,11 +2049,11 @@ export async function handleApproval(interaction) {
 
                     "? **UR DATA HAS BEEN SUCCESSFULLY IMPORTED AND STORED**\n\n" +
 
-                    `?? PRIMARY: **${progress.primary_count}/2**\n` +
+                    `\u{1F3AF} PRIMARY: **${progress.primary_count}/2**\n` +
 
-                    `?? SECONDARY: **${progress.secondary_count}/2**\n` +
+                    `\u{1F3AF} SECONDARY: **${progress.secondary_count}/2**\n` +
 
-                    `?? TOTAL: **${progress.total_count}/4**`
+                    `\u{1F4CA} TOTAL: **${progress.total_count}/4**`
 
             });
 
@@ -2068,11 +2068,11 @@ export async function handleApproval(interaction) {
 
             content:
 
-                `?? 4/4 DRILLS COMPLETE, <@${ownerId}>!\n` +
+                `\u{2705} 4/4 DRILLS COMPLETE, <@${ownerId}>!\n` +
 
-                "?? MISSION ACCOMPLISHED — YOU GAVE IT YOUR ALL TODAY!\n" +
+                "\u{1F3C6} MISSION ACCOMPLISHED — YOU GAVE IT YOUR ALL TODAY!\n" +
 
-                "?? KEEP GRINDING, AIM SHARP, AND COME BACK STRONGER TOMORROW!"
+                "\u{1F4AA} KEEP GRINDING, AIM SHARP, AND COME BACK STRONGER TOMORROW!"
 
         });
 
