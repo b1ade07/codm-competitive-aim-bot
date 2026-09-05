@@ -129,6 +129,9 @@ View your current and longest streak.
 \`/delete-uploaded-data\`
 Delete one of your own APPROVED drills using its specific Drill ID.
 
+`/peak-drill`
+View your peak kills, peak accuracy and peak headshot accuracy for the current year.
+
 **DAILY TARGET**
 
 Primary: **2 drills**
@@ -146,6 +149,9 @@ Only approved drills count toward progress.
                 message += `
 
 **ADMIN COMMANDS**
+
+`/admin-delete-uploaded-data <drill_id>`
+Delete any user's APPROVED drill using its specific Drill ID.
 
 \`/admin-approve <drill_id>\`
 Approve a pending drill.
