@@ -53,6 +53,10 @@ import {
 } from "../commands/adminChangeRole.js";
 
 import {
+    handlePeakDrill
+} from "../commands/peakDrill.js";
+
+import {
     handleAdminDeleteUploadedData
 } from "../commands/adminDeleteUploadedData.js";
 
