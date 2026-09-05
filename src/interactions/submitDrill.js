@@ -371,9 +371,7 @@ export async function startSubmitDrill(interaction) {
                         "ENTER VALUES MANUALLY"
                     )
 
-                    .setEmoji(
-                        "??"
-                    )
+                    .setEmoji("\uD83D\uDCDD")
 
                     .setStyle(
                         ButtonStyle.Primary
@@ -448,9 +446,7 @@ export async function startSubmitDrill(interaction) {
                         "ENTER VALUES MANUALLY"
                     )
 
-                    .setEmoji(
-                        "??"
-                    )
+                    .setEmoji("\uD83D\uDCDD")
 
                     .setStyle(
                         ButtonStyle.Primary
@@ -534,9 +530,7 @@ export async function startSubmitDrill(interaction) {
                     "CONFIRM"
                 )
 
-                .setEmoji(
-                    "?"
-                )
+                .setEmoji("\u2705")
 
                 .setStyle(
                     ButtonStyle.Success
@@ -574,9 +568,7 @@ export async function startSubmitDrill(interaction) {
                     "CANCEL"
                 )
 
-                .setEmoji(
-                    "?"
-                )
+                .setEmoji("\u274C")
 
                 .setStyle(
                     ButtonStyle.Danger
