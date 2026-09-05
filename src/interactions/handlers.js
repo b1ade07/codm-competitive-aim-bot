@@ -523,6 +523,51 @@ Correct a player's permanent Primary or Secondary gun role.
 
 
         // ====================================================
+        // /ADMIN-REGISTER
+        // ====================================================
+
+        if (command === "admin-register") {
+
+            return await handleAdminRegister(
+                interaction
+            );
+
+        }
+
+
+        // ====================================================
+        // ADMIN PRIMARY ROLE SELECTION
+        // ====================================================
+
+        if (
+            interaction.isStringSelectMenu() &&
+            interaction.customId.startsWith("admin_primary_role_select:")
+        ) {
+
+            return await handleAdminPrimaryRole(
+                interaction
+            );
+
+        }
+
+
+        // ====================================================
+        // ADMIN SECONDARY ROLE SELECTION
+        // ====================================================
+
+        if (
+            interaction.isStringSelectMenu() &&
+            interaction.customId.startsWith("admin_secondary_role_select:")
+        ) {
+
+            return await handleAdminSecondaryRole(
+                interaction
+            );
+
+        }
+
+
+        // ====================================================
         // ADMIN CHANGE ROLE
         // ====================================================
 
