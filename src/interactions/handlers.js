@@ -370,7 +370,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
                 return await interaction.reply({
                     content:
-                        "? Administrator permission required.",
+                        "\u274C Administrator permission required.",
                     ephemeral: true
                 });
 
@@ -391,7 +391,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
                 return await interaction.reply({
                     content:
-                        `? Could not approve Drill ID **${drillId}**.\nReason: **${result.reason}**`,
+                        `\u274C Could not approve Drill ID **${drillId}**.\nReason: **${result.reason}**`,
                     ephemeral: true
                 });
 
@@ -399,7 +399,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
             return await interaction.reply({
                 content:
-                    `? Drill ID **${drillId}** has been approved.`,
+                    `\u2705 Drill ID **${drillId}** has been approved.`,
                 ephemeral: false
             });
 
@@ -446,7 +446,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
                 return await interaction.reply({
                     content:
-                        `? Could not reject Drill ID **${drillId}**.\nReason: **${result.reason}**`,
+                        `\u274C Could not reject Drill ID **${drillId}**.\nReason: **${result.reason}**`,
                     ephemeral: true
                 });
 
@@ -454,7 +454,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
             return await interaction.reply({
                 content:
-                    `? Drill ID **${drillId}** rejected.` +
+                    `\u274C Drill ID **${drillId}** rejected.` +
                     (
                         reason
                             ? `\nReason: ${reason}`
@@ -504,7 +504,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
                 return await interaction.reply({
                     content:
-                        `? No registered data found for ${member}.`,
+                        `\u274C No registered data found for ${member}.`,
                     ephemeral: true
                 });
 
@@ -512,7 +512,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
             return await interaction.reply({
                 content:
-                    `?? **${user?.tag || member.tag}**\n\n` +
+                    `\U0001F464 **${user?.tag || member.tag}**\n\n` +
                     `Primary: **${stored.primary_role || "Not set"}**\n` +
                     `Secondary: **${stored.secondary_role || "Not set"}**\n` +
                     `Registered: **${stored.registered_at || "Not available"}**\n` +
