@@ -308,11 +308,12 @@ export async function startSubmitDrill(interaction) {
 
 
         let stats;
+        let ocrResult;
 
 
         try {
 
-            const ocrResult =
+            ocrResult =
                 await runOCR(
                     screenshot.url
                 );
