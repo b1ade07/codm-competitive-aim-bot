@@ -1,4 +1,4 @@
-﻿import {
+import {
     EmbedBuilder,
     ActionRowBuilder,
     StringSelectMenuBuilder
@@ -24,6 +24,16 @@ export async function startLeaderboard(
                 "SELECT LEADERBOARD CATEGORY"
             )
             .addOptions(
+
+                {
+                    label: "TOTAL NUMBER OF KILLS",
+
+                    value: "total_kills",
+
+                    description:
+                        "Total approved kills in the current year"
+
+                },
 
                 {
                     label: "KILLS",
@@ -70,14 +80,14 @@ export async function startLeaderboard(
     const embed =
         new EmbedBuilder()
             .setTitle(
-                "🎯 AIM DRILLS LIFETIME LEADERBOARD"
+                "?? AIM DRILLS LIFETIME LEADERBOARD"
             )
             .setDescription(
                 "Select the statistic you want to view.\n\n" +
 
-                "📌 Leaderboards are based on **APPROVED DRILLS ONLY**.\n" +
+                "?? Leaderboards are based on **APPROVED DRILLS ONLY**.\n" +
 
-                "📌 Historical data is never reset."
+                "?? Historical data is never reset."
             );
 
 
@@ -133,7 +143,7 @@ export async function showLeaderboard(
         return await interaction.update({
 
             content:
-                "❌ Invalid leaderboard category.",
+                "? Invalid leaderboard category.",
 
             embeds: [],
 
@@ -193,19 +203,23 @@ export async function showLeaderboard(
 
 
                         const formatted =
-                            category ===
-                            "kills"
 
-                                ? value.toFixed(2)
+                            category === "total_kills"
 
-                                : `${value.toFixed(2)}%`;
+                                ? value.toFixed(0)
+
+                                : category === "kills"
+
+                                    ? value.toFixed(2)
+
+                                    : `${value.toFixed(2)}%`;
 
 
                         return (
 
                             `**${index + 1}.** ` +
 
-                            `${row.username} — ` +
+                            `${row.username} � ` +
 
                             `**${formatted}**`
 
@@ -225,7 +239,7 @@ export async function showLeaderboard(
     const embed =
         new EmbedBuilder()
             .setTitle(
-                `🎯 ${categoryName} LEADERBOARD`
+                `?? ${categoryName} LEADERBOARD`
             )
             .setDescription(
                 description
@@ -233,7 +247,7 @@ export async function showLeaderboard(
             .setFooter({
 
                 text:
-                    "Lifetime approved-drill averages • Historical data retained"
+                    "Lifetime approved-drill averages � Historical data retained"
 
             });
 
@@ -271,6 +285,31 @@ export async function showLeaderboard(
 function dbQueryLeaderboard(
     category
 ) {
+
+    if (category === "total_kills") {
+        const year = new Intl.DateTimeFormat(
+            "en-US",
+            { timeZone: "Asia/Kolkata", year: "numeric" }
+        ).format(new Date());
+
+        const yearStart = `${year}-01-01T00:00:00`;
+        const nextYearStart = `${Number(year) + 1}-01-01T00:00:00`;
+
+        return db.prepare(`
+            SELECT users.discord_id AS discord_id,
+                   users.username AS username,
+                   COALESCE(SUM(drills.kills), 0) AS value
+            FROM users
+            INNER JOIN drills ON drills.discord_id = users.discord_id
+            WHERE drills.status = "APPROVED"
+              AND drills.submitted_at >= ?
+              AND drills.submitted_at < ?
+            GROUP BY users.discord_id, users.username
+            ORDER BY value DESC
+            LIMIT 25
+        `).all(yearStart, nextYearStart);
+    }
+
 
     const valueExpression = {
 

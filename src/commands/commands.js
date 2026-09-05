@@ -1,4 +1,4 @@
-﻿import {
+import {
     SlashCommandBuilder,
     PermissionFlagsBits
 } from "discord.js";
@@ -100,6 +100,13 @@ export const publicCommands = [
 
 
     new SlashCommandBuilder()
+        .setName("peak-drill")
+        .setDescription(
+            "View your peak AIM DRILLS performance for the current year."
+        ),
+
+
+    new SlashCommandBuilder()
         .setName("leaderboard")
         .setDescription(
             "View the lifetime AIM DRILLS leaderboard."
@@ -170,6 +177,19 @@ export const publicCommands = [
 // ============================================================
 
 export const adminCommands = [
+
+    new SlashCommandBuilder()
+        .setName("admin-delete-uploaded-data")
+        .setDescription("Admin: delete any user's approved AIM drill upload.")
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        .addIntegerOption(option =>
+            option
+                .setName("drill_id")
+                .setDescription("The specific approved Drill ID to delete.")
+                .setRequired(true)
+                .setMinValue(1)
+        ),
+
 
     new SlashCommandBuilder()
         .setName("admin-approve")

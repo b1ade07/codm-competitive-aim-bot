@@ -53,9 +53,12 @@ import {
 } from "../commands/adminChangeRole.js";
 
 import {
+    handleAdminDeleteUploadedData
+} from "../commands/adminDeleteUploadedData.js";
+
+import {
     handleDeleteUploadedData
 } from "../commands/deleteUploadedData.js";
-
 
 // ============================================================
 // MAIN INTERACTION HANDLER
@@ -239,6 +242,14 @@ Correct a player's permanent Primary or Secondary gun role.
         // /LEADERBOARD
         // ====================================================
 
+        if (command === "peak-drill") {
+
+            return await handlePeakDrill(
+                interaction
+            );
+
+        }
+
         if (command === "leaderboard") {
 
             return await startLeaderboard(
@@ -314,6 +325,19 @@ Correct a player's permanent Primary or Secondary gun role.
 
 
         // ====================================================
+        // ====================================================
+        // /ADMIN-DELETE-UPLOADED-DATA
+        // ====================================================
+
+        if (command === "admin-delete-uploaded-data") {
+
+            return await handleAdminDeleteUploadedData(
+                interaction
+            );
+
+        }
+
+
         // ADMIN APPROVE
         // ====================================================
 
