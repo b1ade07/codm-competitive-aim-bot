@@ -80,14 +80,14 @@ export async function startLeaderboard(
     const embed =
         new EmbedBuilder()
             .setTitle(
-                "?? AIM DRILLS LIFETIME LEADERBOARD"
+                "\U0001F3C6 AIM DRILLS LIFETIME LEADERBOARD"
             )
             .setDescription(
                 "Select the statistic you want to view.\n\n" +
 
-                "?? Leaderboards are based on **APPROVED DRILLS ONLY**.\n" +
+                "\U0001F4CA Leaderboards are based on **APPROVED DRILLS ONLY**.\n" +
 
-                "?? Historical data is never reset."
+                "\u267E\uFE0F Historical data is never reset."
             );
 
 
@@ -146,7 +146,7 @@ export async function showLeaderboard(
         return await interaction.update({
 
             content:
-                "? Invalid leaderboard category.",
+                "\u274C Invalid leaderboard category.",
 
             embeds: [],
 
@@ -242,7 +242,7 @@ export async function showLeaderboard(
     const embed =
         new EmbedBuilder()
             .setTitle(
-                `?? ${categoryName} LEADERBOARD`
+                `\U0001F3C6 ${categoryName} LEADERBOARD`
             )
             .setDescription(
                 description
