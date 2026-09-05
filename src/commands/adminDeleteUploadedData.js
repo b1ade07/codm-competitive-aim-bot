@@ -12,7 +12,7 @@ export async function handleAdminDeleteUploadedData(interaction) {
         )
     ) {
         return interaction.reply({
-            content: "? Administrator permission required.",
+            content: "\u274C Administrator permission required.",
             ephemeral: true
         });
     }
@@ -25,7 +25,7 @@ export async function handleAdminDeleteUploadedData(interaction) {
 
     if (!drill) {
         return interaction.reply({
-            content: `? Drill ID **${drillId}** was not found.`,
+            content: `\u274C Drill ID **${drillId}** was not found.`,
             ephemeral: true
         });
     }
@@ -40,13 +40,13 @@ export async function handleAdminDeleteUploadedData(interaction) {
 
         if (result.reason === "NOT_APPROVED") {
             return interaction.reply({
-                content: "? Only an APPROVED drill can be deleted.",
+                content: "\u274C Only an APPROVED drill can be deleted.",
                 ephemeral: true
             });
         }
 
         return interaction.reply({
-            content: "? The drill could not be deleted. No data was changed.",
+            content: "\u274C The drill could not be deleted. No data was changed.",
             ephemeral: true
         });
     }
@@ -94,14 +94,14 @@ export async function handleAdminDeleteUploadedData(interaction) {
 
     return interaction.reply({
         content:
-            `? **Drill ID ${drillId} deleted by admin.**\n\n` +
+            `\u2705 **Drill ID ${drillId} deleted by admin.**\n\n` +
             `User: <@${drill.discord_id}>\n` +
-            `?? Progress: **${result.progress.total}/4**\n` +
-            `?? Current streak: **${result.streak.current} day(s)**\n` +
-            `?? Longest streak: **${result.streak.longest} day(s)**\n` +
+            `\U0001F4CA Progress: **${result.progress.total}/4**\n` +
+            `\U0001F525 Current streak: **${result.streak.current} day(s)**\n` +
+            `\U0001F3C5 Longest streak: **${result.streak.longest} day(s)**\n` +
             `${messageDeleted
-                ? "??? Public drill result removed."
-                : "?? Database drill deleted; public result unavailable."}`,
+                ? "\U0001F5D1\uFE0F Public drill result removed."
+                : "\u2139\uFE0F Database drill deleted; public result unavailable."}`,
         ephemeral: true
     });
 }
