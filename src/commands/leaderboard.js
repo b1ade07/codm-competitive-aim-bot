@@ -122,6 +122,9 @@ export async function showLeaderboard(
 
     const allowedCategories = {
 
+        total_kills:
+            "TOTAL NUMBER OF KILLS",
+
         kills:
             "KILLS",
 
