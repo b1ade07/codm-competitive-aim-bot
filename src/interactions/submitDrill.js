@@ -548,9 +548,7 @@ export async function startSubmitDrill(interaction) {
                     "CORRECT VALUES"
                 )
 
-                .setEmoji(
-                    "??"
-                )
+                .setEmoji("\uD83D\uDCDD")
 
                 .setStyle(
                     ButtonStyle.Primary
