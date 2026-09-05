@@ -1,4 +1,4 @@
-import {
+ï»¿import {
     EmbedBuilder,
     ActionRowBuilder,
     StringSelectMenuBuilder
@@ -222,7 +222,7 @@ export async function showLeaderboard(
 
                             `**${index + 1}.** ` +
 
-                            `${row.username} — ` +
+                            `${row.username} â€” ` +
 
                             `**${formatted}**`
 
@@ -250,7 +250,7 @@ export async function showLeaderboard(
             .setFooter({
 
                 text:
-                    "Lifetime approved-drill averages • Historical data retained"
+                    "Lifetime approved-drill averages â€¢ Historical data retained"
 
             });
 
@@ -304,7 +304,7 @@ function dbQueryLeaderboard(
                    COALESCE(SUM(drills.kills), 0) AS value
             FROM users
             INNER JOIN drills ON drills.discord_id = users.discord_id
-            WHERE drills.status = "APPROVED"
+            WHERE drills.status = 'APPROVED'
               AND drills.submitted_at >= ?
               AND drills.submitted_at < ?
             GROUP BY users.discord_id, users.username
