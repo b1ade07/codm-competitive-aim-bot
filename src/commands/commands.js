@@ -179,6 +179,18 @@ export const publicCommands = [
 export const adminCommands = [
 
     new SlashCommandBuilder()
+        .setName("admin-register")
+        .setDescription("Admin: register permanent gun roles for a user.")
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        .addUserOption(option =>
+            option
+                .setName("user")
+                .setDescription("User whose gun roles will be registered.")
+                .setRequired(true)
+        ),
+
+
+    new SlashCommandBuilder()
         .setName("admin-delete-uploaded-data")
         .setDescription("Admin: delete any user's approved AIM drill upload.")
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)

@@ -53,6 +53,12 @@ import {
 } from "../commands/adminChangeRole.js";
 
 import {
+    handleAdminRegister,
+    handleAdminPrimaryRole,
+    handleAdminSecondaryRole
+} from "../commands/setupRoles.js";
+
+import {
     handlePeakDrill
 } from "../commands/peakDrill.js";
 
