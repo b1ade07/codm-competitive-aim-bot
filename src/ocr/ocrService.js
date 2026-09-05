@@ -1,4 +1,5 @@
 import "dotenv/config";
+import crypto from "crypto";
 
 const OCR_ENDPOINT =
     "https://api.ocr.space/parse/image";
@@ -43,6 +44,18 @@ export async function runOCR(imageUrl) {
 
     console.log(
         `OCR: Screenshot downloaded (${imageBuffer.byteLength} bytes).`
+    );
+
+    const screenshotHash =
+        crypto
+            .createHash("sha256")
+            .update(
+                Buffer.from(imageBuffer)
+            )
+            .digest("hex");
+
+    console.log(
+        "OCR: Screenshot hash generated."
     );
 
     const contentType =
@@ -113,11 +126,9 @@ export async function runOCR(imageUrl) {
             OCR_ENDPOINT,
             {
                 method: "POST",
-
                 headers: {
                     apikey: apiKey
                 },
-
                 body: form
             }
         );
@@ -168,15 +179,13 @@ export async function runOCR(imageUrl) {
         "OCR: Text successfully extracted."
     );
 
-    // TEMPORARY DEBUG LOG
-    // This lets us see exactly what OCR.Space
-    // returned from the COD:M screenshot.
     console.log(
         "OCR RAW TEXT:\n" + text
     );
 
     return {
         text: text.trim(),
-        raw: data
+        raw: data,
+        screenshotHash
     };
 }

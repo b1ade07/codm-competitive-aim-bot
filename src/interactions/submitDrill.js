@@ -1,4 +1,4 @@
-﻿import {
+import {
     ButtonBuilder,
     ButtonStyle,
     ActionRowBuilder,
@@ -70,7 +70,7 @@ export async function startSubmitDrill(interaction) {
 
             return await interaction.reply({
                 content:
-                    "❌ **PLEASE COMPLETE /SETUP-ROLES FIRST.**",
+                    "? **PLEASE COMPLETE /SETUP-ROLES FIRST.**",
                 ephemeral: true
             });
 
@@ -151,7 +151,7 @@ export async function startSubmitDrill(interaction) {
             return await interaction.reply({
 
                 content:
-                    "❌ **PLEASE UPLOAD A VALID IMAGE SCREENSHOT.**",
+                    "? **PLEASE UPLOAD A VALID IMAGE SCREENSHOT.**",
 
                 ephemeral:
                     true
@@ -173,7 +173,7 @@ export async function startSubmitDrill(interaction) {
             return await interaction.reply({
 
                 content:
-                    "❌ **DRILL TYPE MUST BE PRIMARY OR SECONDARY.**",
+                    "? **DRILL TYPE MUST BE PRIMARY OR SECONDARY.**",
 
                 ephemeral:
                     true
@@ -210,7 +210,7 @@ export async function startSubmitDrill(interaction) {
                 return await interaction.reply({
 
                     content:
-                        "❌ **TOTAL NUMBER OF KILLS MUST BE A VALID WHOLE NUMBER.**",
+                        "? **TOTAL NUMBER OF KILLS MUST BE A VALID WHOLE NUMBER.**",
 
                     ephemeral:
                         true
@@ -227,7 +227,7 @@ export async function startSubmitDrill(interaction) {
                 return await interaction.reply({
 
                     content:
-                        "❌ **ACCURACY MUST BE BETWEEN 0 AND 100.**",
+                        "? **ACCURACY MUST BE BETWEEN 0 AND 100.**",
 
                     ephemeral:
                         true
@@ -246,7 +246,7 @@ export async function startSubmitDrill(interaction) {
                 return await interaction.reply({
 
                     content:
-                        "❌ **HEADSHOT ACCURACY MUST BE BETWEEN 0 AND 100.**",
+                        "? **HEADSHOT ACCURACY MUST BE BETWEEN 0 AND 100.**",
 
                     ephemeral:
                         true
@@ -269,6 +269,9 @@ export async function startSubmitDrill(interaction) {
                     drillType,
 
                     gunRole,
+
+                    screenshotHash:
+                        null,
 
                     totalKills:
                         manualKills,
@@ -298,7 +301,7 @@ export async function startSubmitDrill(interaction) {
         await interaction.editReply({
 
             content:
-                "🔍 **READING YOUR COD:M SCREENSHOT...**\n\n" +
+                "?? **READING YOUR COD:M SCREENSHOT...**\n\n" +
                 "Please wait..."
 
         });
@@ -368,7 +371,7 @@ export async function startSubmitDrill(interaction) {
                     )
 
                     .setEmoji(
-                        "✍️"
+                        "??"
                     )
 
                     .setStyle(
@@ -387,7 +390,7 @@ export async function startSubmitDrill(interaction) {
 
                 content:
 
-                    "⚠️ **I COULDN'T READ THE COD:M STATISTICS.**\n\n" +
+                    "?? **I COULDN'T READ THE COD:M STATISTICS.**\n\n" +
                     "You can enter the values manually.",
 
                 components: [
@@ -445,7 +448,7 @@ export async function startSubmitDrill(interaction) {
                     )
 
                     .setEmoji(
-                        "✍️"
+                        "??"
                     )
 
                     .setStyle(
@@ -464,7 +467,7 @@ export async function startSubmitDrill(interaction) {
 
                 content:
 
-                    "⚠️ **THE OCR VALUES COULD NOT BE VALIDATED.**\n\n" +
+                    "?? **THE OCR VALUES COULD NOT BE VALIDATED.**\n\n" +
                     "You can enter the values manually.",
 
                 components: [
@@ -498,6 +501,9 @@ export async function startSubmitDrill(interaction) {
 
                 gunRole,
 
+                screenshotHash:
+                    ocrResult.screenshotHash,
+
                 totalKills:
                     stats.kills,
 
@@ -528,7 +534,7 @@ export async function startSubmitDrill(interaction) {
                 )
 
                 .setEmoji(
-                    "✅"
+                    "?"
                 )
 
                 .setStyle(
@@ -548,7 +554,7 @@ export async function startSubmitDrill(interaction) {
                 )
 
                 .setEmoji(
-                    "✍️"
+                    "??"
                 )
 
                 .setStyle(
@@ -568,7 +574,7 @@ export async function startSubmitDrill(interaction) {
                 )
 
                 .setEmoji(
-                    "❌"
+                    "?"
                 )
 
                 .setStyle(
@@ -593,15 +599,15 @@ export async function startSubmitDrill(interaction) {
 
             content:
 
-                "🔍 **OCR COMPLETE**\n\n" +
+                "?? **OCR COMPLETE**\n\n" +
 
-                `🎯 **Kills:** ${stats.kills}\n` +
+                `?? **Kills:** ${stats.kills}\n` +
 
-                `📊 **Accuracy:** ${Number(
+                `?? **Accuracy:** ${Number(
                     stats.accuracy
                 ).toFixed(2)}%\n` +
 
-                `🎯 **Headshot Accuracy:** ${Number(
+                `?? **Headshot Accuracy:** ${Number(
                     stats.headshotAccuracy
                 ).toFixed(2)}%\n\n` +
 
@@ -630,7 +636,7 @@ export async function startSubmitDrill(interaction) {
             return await interaction.reply({
 
                 content:
-                    "❌ **AN ERROR OCCURRED WHILE PROCESSING YOUR DRILL.**",
+                    "? **AN ERROR OCCURRED WHILE PROCESSING YOUR DRILL.**",
 
                 ephemeral:
                     true
@@ -673,7 +679,7 @@ export async function handleOCRButton(interaction) {
             return await interaction.reply({
 
                 content:
-                    "❌ **THIS OCR SESSION HAS EXPIRED. PLEASE SUBMIT THE SCREENSHOT AGAIN.**",
+                    "? **THIS OCR SESSION HAS EXPIRED. PLEASE SUBMIT THE SCREENSHOT AGAIN.**",
 
                 ephemeral:
                     true
@@ -694,7 +700,7 @@ export async function handleOCRButton(interaction) {
             return await interaction.reply({
 
                 content:
-                    "❌ **THIS OCR SESSION BELONGS TO ANOTHER PLAYER.**",
+                    "? **THIS OCR SESSION BELONGS TO ANOTHER PLAYER.**",
 
                 ephemeral:
                     true
@@ -751,7 +757,7 @@ export async function handleOCRButton(interaction) {
             return await interaction.update({
 
                 content:
-                    "❌ **DRILL SUBMISSION CANCELLED.**",
+                    "? **DRILL SUBMISSION CANCELLED.**",
 
                 components:
                     []
@@ -775,7 +781,7 @@ export async function handleOCRButton(interaction) {
             await interaction.update({
 
                 content:
-                    "✅ **VALUES CONFIRMED. SAVING YOUR DRILL...**",
+                    "? **VALUES CONFIRMED. SAVING YOUR DRILL...**",
 
                 components:
                     []
@@ -1067,7 +1073,7 @@ export async function handleOCRModal(interaction) {
             return await interaction.reply({
 
                 content:
-                    "❌ **THIS OCR SESSION HAS EXPIRED. PLEASE SUBMIT AGAIN.**",
+                    "? **THIS OCR SESSION HAS EXPIRED. PLEASE SUBMIT AGAIN.**",
 
                 ephemeral:
                     true
@@ -1084,7 +1090,7 @@ export async function handleOCRModal(interaction) {
             return await interaction.reply({
 
                 content:
-                    "❌ **THIS SUBMISSION BELONGS TO ANOTHER PLAYER.**",
+                    "? **THIS SUBMISSION BELONGS TO ANOTHER PLAYER.**",
 
                 ephemeral:
                     true
@@ -1155,7 +1161,7 @@ export async function handleOCRModal(interaction) {
             return await interaction.reply({
 
                 content:
-                    "❌ **TOTAL KILLS MUST BE A VALID WHOLE NUMBER.**",
+                    "? **TOTAL KILLS MUST BE A VALID WHOLE NUMBER.**",
 
                 ephemeral:
                     true
@@ -1172,7 +1178,7 @@ export async function handleOCRModal(interaction) {
             return await interaction.reply({
 
                 content:
-                    "❌ **ACCURACY MUST BE BETWEEN 0 AND 100.**",
+                    "? **ACCURACY MUST BE BETWEEN 0 AND 100.**",
 
                 ephemeral:
                     true
@@ -1189,7 +1195,7 @@ export async function handleOCRModal(interaction) {
             return await interaction.reply({
 
                 content:
-                    "❌ **HEADSHOT ACCURACY MUST BE BETWEEN 0 AND 100.**",
+                    "? **HEADSHOT ACCURACY MUST BE BETWEEN 0 AND 100.**",
 
                 ephemeral:
                     true
@@ -1236,7 +1242,7 @@ export async function handleOCRModal(interaction) {
             return await interaction.reply({
 
                 content:
-                    "❌ **COULD NOT PROCESS THE VALUES.**",
+                    "? **COULD NOT PROCESS THE VALUES.**",
 
                 ephemeral:
                     true
@@ -1315,7 +1321,7 @@ async function createSubmission(
 
             interaction,
 
-            "❌ **TOTAL NUMBER OF KILLS MUST BE A VALID WHOLE NUMBER.**"
+            "? **TOTAL NUMBER OF KILLS MUST BE A VALID WHOLE NUMBER.**"
 
         );
 
@@ -1330,7 +1336,7 @@ async function createSubmission(
 
             interaction,
 
-            "❌ **ACCURACY MUST BE BETWEEN 0 AND 100.**"
+            "? **ACCURACY MUST BE BETWEEN 0 AND 100.**"
 
         );
 
@@ -1345,7 +1351,7 @@ async function createSubmission(
 
             interaction,
 
-            "❌ **HEADSHOT ACCURACY MUST BE BETWEEN 0 AND 100.**"
+            "? **HEADSHOT ACCURACY MUST BE BETWEEN 0 AND 100.**"
 
         );
 
@@ -1379,6 +1385,9 @@ async function createSubmission(
 
             screenshotUrl:
                 screenshot.url,
+
+            screenshotHash:
+                data.screenshotHash,
 
             screenshotMessageId:
                 null,
@@ -1421,7 +1430,7 @@ async function createSubmission(
 
                 interaction,
 
-                "❌ **THIS DRILL HAS ALREADY BEEN SUBMITTED.**"
+                "? **THIS DRILL HAS ALREADY BEEN SUBMITTED.**"
 
             );
 
@@ -1436,7 +1445,7 @@ async function createSubmission(
 
                 interaction,
 
-                "❌ **YOU HAVE ALREADY REACHED YOUR PRIMARY DRILL LIMIT OF 2 FOR TODAY.**"
+                "? **YOU HAVE ALREADY REACHED YOUR PRIMARY DRILL LIMIT OF 2 FOR TODAY.**"
 
             );
 
@@ -1451,7 +1460,7 @@ async function createSubmission(
 
                 interaction,
 
-                "❌ **YOU HAVE ALREADY REACHED YOUR SECONDARY DRILL LIMIT OF 2 FOR TODAY.**"
+                "? **YOU HAVE ALREADY REACHED YOUR SECONDARY DRILL LIMIT OF 2 FOR TODAY.**"
 
             );
 
@@ -1462,7 +1471,7 @@ async function createSubmission(
 
             interaction,
 
-            "❌ **DRILL COULD NOT BE SUBMITTED.**"
+            "? **DRILL COULD NOT BE SUBMITTED.**"
 
         );
 
@@ -1521,7 +1530,7 @@ async function createSubmission(
         new EmbedBuilder()
 
             .setTitle(
-                "🎯 AIM DRILL SUBMISSION"
+                "?? AIM DRILL SUBMISSION"
             )
 
             .setDescription(
@@ -1532,7 +1541,7 @@ async function createSubmission(
 
                 `**GUN ROLE:** ${gunRole}\n` +
 
-                `**STATUS:** ⏳ PENDING APPROVAL`
+                `**STATUS:** ? PENDING APPROVAL`
 
             )
 
@@ -1541,7 +1550,7 @@ async function createSubmission(
                 {
 
                     name:
-                        "🎯 TOTAL KILLS",
+                        "?? TOTAL KILLS",
 
                     value:
                         `${totalKills}`,
@@ -1554,7 +1563,7 @@ async function createSubmission(
                 {
 
                     name:
-                        "📊 ACCURACY",
+                        "?? ACCURACY",
 
                     value:
                         `${Number(
@@ -1569,7 +1578,7 @@ async function createSubmission(
                 {
 
                     name:
-                        "🎯 HEADSHOT ACCURACY",
+                        "?? HEADSHOT ACCURACY",
 
                     value:
                         `${Number(
@@ -1600,7 +1609,7 @@ async function createSubmission(
         embed.addFields({
 
             name:
-                "📈 CHANGE FROM LAST APPROVED DRILL",
+                "?? CHANGE FROM LAST APPROVED DRILL",
 
             value:
 
@@ -1626,7 +1635,7 @@ async function createSubmission(
         embed.addFields({
 
             name:
-                "📈 CHANGE FROM LAST APPROVED DRILL",
+                "?? CHANGE FROM LAST APPROVED DRILL",
 
             value:
                 "This is your first approved drill.",
@@ -1650,7 +1659,7 @@ async function createSubmission(
         embed.addFields({
 
             name:
-                "🏆 LIFETIME AVERAGES",
+                "?? LIFETIME AVERAGES",
 
             value:
 
@@ -1690,7 +1699,7 @@ async function createSubmission(
             )
 
             .setEmoji(
-                "✅"
+                "?"
             )
 
             .setStyle(
@@ -1737,7 +1746,7 @@ async function createSubmission(
 
             interaction,
 
-            "❌ **DRILL WAS SAVED, BUT THE PUBLIC RESULT MESSAGE COULD NOT BE CREATED. PLEASE CONTACT AN ADMIN.**"
+            "? **DRILL WAS SAVED, BUT THE PUBLIC RESULT MESSAGE COULD NOT BE CREATED. PLEASE CONTACT AN ADMIN.**"
 
         );
 
@@ -1794,7 +1803,7 @@ async function createSubmission(
         await interaction.editReply({
 
             content:
-                "✅ **YOUR DRILL HAS BEEN SUBMITTED FOR APPROVAL.**",
+                "? **YOUR DRILL HAS BEEN SUBMITTED FOR APPROVAL.**",
 
             components:
                 []
@@ -1808,7 +1817,7 @@ async function createSubmission(
         await interaction.reply({
 
             content:
-                "✅ **YOUR DRILL HAS BEEN SUBMITTED FOR APPROVAL.**",
+                "? **YOUR DRILL HAS BEEN SUBMITTED FOR APPROVAL.**",
 
             ephemeral:
                 true
@@ -1854,7 +1863,7 @@ export async function handleApproval(interaction) {
             return await interaction.reply({
 
                 content:
-                    "❌ **ONLY THE PLAYER WHO SUBMITTED THIS DRILL CAN APPROVE IT.**",
+                    "? **ONLY THE PLAYER WHO SUBMITTED THIS DRILL CAN APPROVE IT.**",
 
                 ephemeral:
                     true
@@ -1886,7 +1895,7 @@ export async function handleApproval(interaction) {
             return await interaction.reply({
 
                 content:
-                    "❌ **THIS DRILL COULD NOT BE APPROVED.**",
+                    "? **THIS DRILL COULD NOT BE APPROVED.**",
 
                 ephemeral:
                     true
@@ -1907,7 +1916,7 @@ export async function handleApproval(interaction) {
             return await interaction.reply({
 
                 content:
-                    "❌ **THE APPROVED DRILL COULD NOT BE FOUND.**",
+                    "? **THE APPROVED DRILL COULD NOT BE FOUND.**",
 
                 ephemeral:
                     true
@@ -1931,7 +1940,7 @@ export async function handleApproval(interaction) {
             new EmbedBuilder()
 
                 .setTitle(
-                    "🎯 AIM DRILL SUBMISSION"
+                    "?? AIM DRILL SUBMISSION"
                 )
 
                 .setDescription(
@@ -1942,7 +1951,7 @@ export async function handleApproval(interaction) {
 
                     `**GUN ROLE:** ${drill.gun_role}\n` +
 
-                    `**STATUS:** ✅ APPROVED`
+                    `**STATUS:** ? APPROVED`
 
                 )
 
@@ -1951,7 +1960,7 @@ export async function handleApproval(interaction) {
                     {
 
                         name:
-                            "🎯 TOTAL KILLS",
+                            "?? TOTAL KILLS",
 
                         value:
                             `${drill.kills}`,
@@ -1964,7 +1973,7 @@ export async function handleApproval(interaction) {
                     {
 
                         name:
-                            "📊 ACCURACY",
+                            "?? ACCURACY",
 
                         value:
                             `${Number(
@@ -1979,7 +1988,7 @@ export async function handleApproval(interaction) {
                     {
 
                         name:
-                            "🎯 HEADSHOT ACCURACY",
+                            "?? HEADSHOT ACCURACY",
 
                         value:
                             `${Number(
@@ -1994,7 +2003,7 @@ export async function handleApproval(interaction) {
                     {
 
                         name:
-                            "📌 DAILY PROGRESS",
+                            "?? DAILY PROGRESS",
 
                         value:
 
@@ -2018,7 +2027,7 @@ export async function handleApproval(interaction) {
                 .setFooter({
 
                     text:
-                        `Drill ID: ${drillId} • APPROVED`
+                        `Drill ID: ${drillId} � APPROVED`
 
                 });
 
@@ -2047,13 +2056,13 @@ export async function handleApproval(interaction) {
 
                 content:
 
-                    "✅ **UR DATA HAS BEEN SUCCESSFULLY IMPORTED AND STORED**\n\n" +
+                    "? **UR DATA HAS BEEN SUCCESSFULLY IMPORTED AND STORED**\n\n" +
 
-                    `🎯 PRIMARY: **${progress.primary_count}/2**\n` +
+                    `?? PRIMARY: **${progress.primary_count}/2**\n` +
 
-                    `🔫 SECONDARY: **${progress.secondary_count}/2**\n` +
+                    `?? SECONDARY: **${progress.secondary_count}/2**\n` +
 
-                    `🏆 TOTAL: **${progress.total_count}/4**`
+                    `?? TOTAL: **${progress.total_count}/4**`
 
             });
 
@@ -2068,11 +2077,11 @@ export async function handleApproval(interaction) {
 
             content:
 
-                `🔥 4/4 DRILLS COMPLETE, <@${ownerId}>!\n` +
+                `?? 4/4 DRILLS COMPLETE, <@${ownerId}>!\n` +
 
-                "🏆 MISSION ACCOMPLISHED — YOU GAVE IT YOUR ALL TODAY!\n" +
+                "?? MISSION ACCOMPLISHED � YOU GAVE IT YOUR ALL TODAY!\n" +
 
-                "💪 KEEP GRINDING, AIM SHARP, AND COME BACK STRONGER TOMORROW!"
+                "?? KEEP GRINDING, AIM SHARP, AND COME BACK STRONGER TOMORROW!"
 
         });
 

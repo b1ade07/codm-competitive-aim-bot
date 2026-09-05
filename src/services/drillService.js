@@ -1,4 +1,4 @@
-﻿import crypto from "crypto";
+import crypto from "crypto";
 
 import db from "../database/database.js";
 import { getDailyCycle } from "../utils/dailyCycle.js";
@@ -267,6 +267,7 @@ export function submitDrill({
     accuracy,
     headshotAccuracy,
     screenshotUrl,
+    screenshotHash,
     screenshotMessageId,
     screenshotChannelId
 
@@ -274,6 +275,30 @@ export function submitDrill({
 
     const dayKey =
         getDailyCycle();
+
+
+    // --------------------------------------------------------
+    // SCREENSHOT HASH VALIDATION
+    // --------------------------------------------------------
+
+    if (
+        typeof screenshotHash !== "string" ||
+        !/^[a-f0-9]{64}$/i.test(
+            screenshotHash
+        )
+    ) {
+
+        return {
+            success: false,
+            reason: "SCREENSHOT_HASH_REQUIRED"
+        };
+
+    }
+
+
+    const normalizedScreenshotHash =
+        screenshotHash.toLowerCase();
+
 
     const fingerprint =
         makeFingerprint(
@@ -287,7 +312,7 @@ export function submitDrill({
 
 
     // --------------------------------------------------------
-    // DUPLICATE CHECK
+    // EXISTING STATS DUPLICATE CHECK
     // --------------------------------------------------------
 
     const duplicate =
@@ -304,6 +329,37 @@ export function submitDrill({
         return {
             success: false,
             reason: "DUPLICATE"
+        };
+
+    }
+
+
+    // --------------------------------------------------------
+    // SCREENSHOT DUPLICATE CHECK
+    //
+    // IMPORTANT:
+    // The screenshot hash does NOT include role type.
+    // Therefore the same screenshot cannot be reused by the
+    // same player as PRIMARY and then SECONDARY.
+    // --------------------------------------------------------
+
+    const duplicateScreenshot =
+        db.prepare(`
+            SELECT id
+            FROM drills
+            WHERE discord_id = ?
+            AND screenshot_hash = ?
+            LIMIT 1
+        `).get(
+            discordId,
+            normalizedScreenshotHash
+        );
+
+    if (duplicateScreenshot) {
+
+        return {
+            success: false,
+            reason: "SCREENSHOT_DUPLICATE"
         };
 
     }
@@ -391,6 +447,38 @@ export function submitDrill({
 
 
             // ------------------------------------------------
+            // FINAL SCREENSHOT DUPLICATE CHECK
+            //
+            // This second check is inside the transaction so
+            // concurrent submissions cannot slip past the first
+            // check before the INSERT.
+            // ------------------------------------------------
+
+            const transactionDuplicateScreenshot =
+                db.prepare(`
+                    SELECT id
+                    FROM drills
+                    WHERE discord_id = ?
+                    AND screenshot_hash = ?
+                    LIMIT 1
+                `).get(
+                    discordId,
+                    normalizedScreenshotHash
+                );
+
+            if (
+                transactionDuplicateScreenshot
+            ) {
+
+                return {
+                    success: false,
+                    reason: "SCREENSHOT_DUPLICATE"
+                };
+
+            }
+
+
+            // ------------------------------------------------
             // INSERT
             // ------------------------------------------------
 
@@ -408,10 +496,12 @@ export function submitDrill({
                         screenshot_message_id,
                         screenshot_channel_id,
                         fingerprint,
+                        screenshot_hash,
                         status,
                         submitted_at
                     )
                     VALUES (
+                        ?,
                         ?,
                         ?,
                         ?,
@@ -438,6 +528,7 @@ export function submitDrill({
                     screenshotMessageId,
                     screenshotChannelId,
                     fingerprint,
+                    normalizedScreenshotHash,
                     new Date().toISOString()
                 );
 

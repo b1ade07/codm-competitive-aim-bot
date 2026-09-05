@@ -1,4 +1,4 @@
-﻿import Database from "better-sqlite3";
+import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -96,6 +96,31 @@ CREATE TABLE IF NOT EXISTS drills (
 
 
 // ==========================================
+// NON-DESTRUCTIVE SCREENSHOT HASH MIGRATION
+// ==========================================
+
+const drillColumns =
+    db.prepare(`
+        PRAGMA table_info(drills)
+    `).all();
+
+const hasScreenshotHash =
+    drillColumns.some(
+        column =>
+            column.name === "screenshot_hash"
+    );
+
+if (!hasScreenshotHash) {
+
+    db.exec(`
+        ALTER TABLE drills
+        ADD COLUMN screenshot_hash TEXT
+    `);
+
+}
+
+
+// ==========================================
 // DAILY PROGRESS
 // ==========================================
 
@@ -124,19 +149,6 @@ CREATE TABLE IF NOT EXISTS daily_progress (
 
 // ==========================================
 // LIFETIME DRILL STATISTICS ARCHIVE
-// ==========================================
-//
-// This table preserves lifetime approved-drill totals
-// when individual drill records become older than the
-// one-year retention period.
-//
-// IMPORTANT:
-// - Existing users are never deleted.
-// - Existing drills are not changed when this table is created.
-// - Existing statistics remain in the drills table until
-//   the retention cleanup actually runs.
-// - Archive rows are added only when old approved drills
-//   are intentionally archived.
 // ==========================================
 
 db.exec(`
@@ -188,6 +200,12 @@ db.exec(`
 CREATE INDEX IF NOT EXISTS
 idx_drills_role
 ON drills(role_type);
+`);
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS
+idx_drills_screenshot_hash
+ON drills(discord_id, screenshot_hash);
 `);
 
 db.exec(`
