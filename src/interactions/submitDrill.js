@@ -43,7 +43,7 @@ const pendingOCR = new Map();
 // ============================================================
 
 const DAILY_LIMIT_MESSAGE =
-    "SON!? CALM DOWN ITS ALREADY 4/4 !";
+    "\u{1F620} CALM DOWN! IT'S ALREADY 4/4 FOR TODAY!";
 
 
 // ============================================================
@@ -59,10 +59,6 @@ export async function startSubmitDrill(interaction) {
         const user = getUser(userId);
 
 
-        // ----------------------------------------------------
-        // REGISTRATION CHECK
-        // ----------------------------------------------------
-
         if (
             !user ||
             !user.primary_role ||
@@ -71,31 +67,17 @@ export async function startSubmitDrill(interaction) {
 
             return await interaction.reply({
                 content:
-                    "? **PLEASE COMPLETE /SETUP-ROLES FIRST.**",
+                    "\u{274C} **PLEASE COMPLETE /SETUP-ROLES FIRST.**",
                 ephemeral: true
             });
 
         }
 
 
-        // ----------------------------------------------------
-        // HARD DAILY 4/4 LIMIT
-        //
-        // IMPORTANT:
-        // This check happens BEFORE OCR.
-        // Therefore a 5th attempt:
-        // - does not run OCR
-        // - does not create an OCR session
-        // - does not accept values
-        // - does not create a drill
-        // ----------------------------------------------------
-
         const dailyLimit =
             canSubmitDailyDrill(userId);
 
-        if (
-            !dailyLimit.allowed
-        ) {
+        if (!dailyLimit.allowed) {
 
             return await interaction.reply({
 
@@ -109,10 +91,6 @@ export async function startSubmitDrill(interaction) {
 
         }
 
-
-        // ----------------------------------------------------
-        // COMMAND OPTIONS
-        // ----------------------------------------------------
 
         const screenshot =
             interaction.options.getAttachment(
@@ -140,10 +118,6 @@ export async function startSubmitDrill(interaction) {
             );
 
 
-        // ----------------------------------------------------
-        // SCREENSHOT VALIDATION
-        // ----------------------------------------------------
-
         if (
             !screenshot ||
             !isImageAttachment(screenshot)
@@ -152,7 +126,7 @@ export async function startSubmitDrill(interaction) {
             return await interaction.reply({
 
                 content:
-                    "? **PLEASE UPLOAD A VALID IMAGE SCREENSHOT.**",
+                    "\u{274C} **PLEASE UPLOAD A VALID IMAGE SCREENSHOT.**",
 
                 ephemeral:
                     true
@@ -161,10 +135,6 @@ export async function startSubmitDrill(interaction) {
 
         }
 
-
-        // ----------------------------------------------------
-        // DRILL TYPE VALIDATION
-        // ----------------------------------------------------
 
         if (
             drillType !== "PRIMARY" &&
@@ -174,7 +144,7 @@ export async function startSubmitDrill(interaction) {
             return await interaction.reply({
 
                 content:
-                    "? **DRILL TYPE MUST BE PRIMARY OR SECONDARY.**",
+                    "\u{274C} **DRILL TYPE MUST BE PRIMARY OR SECONDARY.**",
 
                 ephemeral:
                     true
@@ -184,19 +154,15 @@ export async function startSubmitDrill(interaction) {
         }
 
 
-        // ----------------------------------------------------
-        // GET PERMANENT GUN ROLE
-        // ----------------------------------------------------
-
         const gunRole =
             drillType === "PRIMARY"
                 ? user.primary_role
                 : user.secondary_role;
 
 
-        // ----------------------------------------------------
+        // ====================================================
         // FULL MANUAL ENTRY
-        // ----------------------------------------------------
+        // ====================================================
 
         if (
             manualKills !== null &&
@@ -204,14 +170,12 @@ export async function startSubmitDrill(interaction) {
             manualHeadshotAccuracy !== null
         ) {
 
-            if (
-                !validateKills(manualKills)
-            ) {
+            if (!validateKills(manualKills)) {
 
                 return await interaction.reply({
 
                     content:
-                        "? **TOTAL NUMBER OF KILLS MUST BE A VALID WHOLE NUMBER.**",
+                        "\u{274C} **TOTAL NUMBER OF KILLS MUST BE A VALID WHOLE NUMBER.**",
 
                     ephemeral:
                         true
@@ -221,14 +185,12 @@ export async function startSubmitDrill(interaction) {
             }
 
 
-            if (
-                !validatePercentage(manualAccuracy)
-            ) {
+            if (!validatePercentage(manualAccuracy)) {
 
                 return await interaction.reply({
 
                     content:
-                        "? **ACCURACY MUST BE BETWEEN 0 AND 100.**",
+                        "\u{274C} **ACCURACY MUST BE BETWEEN 0 AND 100.**",
 
                     ephemeral:
                         true
@@ -238,16 +200,12 @@ export async function startSubmitDrill(interaction) {
             }
 
 
-            if (
-                !validatePercentage(
-                    manualHeadshotAccuracy
-                )
-            ) {
+            if (!validatePercentage(manualHeadshotAccuracy)) {
 
                 return await interaction.reply({
 
                     content:
-                        "? **HEADSHOT ACCURACY MUST BE BETWEEN 0 AND 100.**",
+                        "\u{274C} **HEADSHOT ACCURACY MUST BE BETWEEN 0 AND 100.**",
 
                     ephemeral:
                         true
@@ -290,9 +248,9 @@ export async function startSubmitDrill(interaction) {
         }
 
 
-        // ----------------------------------------------------
+        // ====================================================
         // OCR
-        // ----------------------------------------------------
+        // ====================================================
 
         await interaction.deferReply({
             ephemeral: true
@@ -333,10 +291,6 @@ export async function startSubmitDrill(interaction) {
                 error
             );
 
-
-            // ------------------------------------------------
-            // OCR FAILED
-            // ------------------------------------------------
 
             const token =
                 createToken();
@@ -402,9 +356,9 @@ export async function startSubmitDrill(interaction) {
         }
 
 
-        // ----------------------------------------------------
+        // ====================================================
         // OCR VALIDATION
-        // ----------------------------------------------------
+        // ====================================================
 
         if (
             !stats ||
@@ -477,9 +431,9 @@ export async function startSubmitDrill(interaction) {
         }
 
 
-        // ----------------------------------------------------
+        // ====================================================
         // STORE OCR SESSION
-        // ----------------------------------------------------
+        // ====================================================
 
         const token =
             createToken();
@@ -515,10 +469,6 @@ export async function startSubmitDrill(interaction) {
 
         );
 
-
-        // ----------------------------------------------------
-        // OCR CONFIRMATION BUTTONS
-        // ----------------------------------------------------
 
         const confirmButton =
             new ButtonBuilder()
@@ -583,10 +533,6 @@ export async function startSubmitDrill(interaction) {
                 );
 
 
-        // ----------------------------------------------------
-        // SHOW OCR RESULTS
-        // ----------------------------------------------------
-
         return await interaction.editReply({
 
             content:
@@ -628,7 +574,7 @@ export async function startSubmitDrill(interaction) {
             return await interaction.reply({
 
                 content:
-                    "? **AN ERROR OCCURRED WHILE PROCESSING YOUR DRILL.**",
+                    "\u{274C} **AN ERROR OCCURRED WHILE PROCESSING YOUR DRILL.**",
 
                 ephemeral:
                     true
@@ -653,14 +599,11 @@ export async function handleOCRButton(interaction) {
         const parts =
             interaction.customId.split(":");
 
-
         const action =
             parts[0];
 
-
         const token =
             parts[1];
-
 
         const data =
             pendingOCR.get(token);
@@ -671,7 +614,7 @@ export async function handleOCRButton(interaction) {
             return await interaction.reply({
 
                 content:
-                    "? **THIS OCR SESSION HAS EXPIRED. PLEASE SUBMIT THE SCREENSHOT AGAIN.**",
+                    "\u{274C} **THIS OCR SESSION HAS EXPIRED. PLEASE SUBMIT THE SCREENSHOT AGAIN.**",
 
                 ephemeral:
                     true
@@ -680,10 +623,6 @@ export async function handleOCRButton(interaction) {
 
         }
 
-
-        // ----------------------------------------------------
-        // SECURITY
-        // ----------------------------------------------------
 
         if (
             interaction.user.id !== data.userId
@@ -692,7 +631,7 @@ export async function handleOCRButton(interaction) {
             return await interaction.reply({
 
                 content:
-                    "? **THIS OCR SESSION BELONGS TO ANOTHER PLAYER.**",
+                    "\u{274C} **THIS OCR SESSION BELONGS TO ANOTHER PLAYER.**",
 
                 ephemeral:
                     true
@@ -702,22 +641,13 @@ export async function handleOCRButton(interaction) {
         }
 
 
-        // ----------------------------------------------------
-        // SECOND DAILY LIMIT CHECK
-        //
-        // Protects against a player leaving the OCR session
-        // open while completing other drills.
-        // ----------------------------------------------------
-
         const dailyLimit =
             canSubmitDailyDrill(
                 data.userId
             );
 
 
-        if (
-            !dailyLimit.allowed
-        ) {
+        if (!dailyLimit.allowed) {
 
             pendingOCR.delete(token);
 
@@ -735,10 +665,6 @@ export async function handleOCRButton(interaction) {
         }
 
 
-        // ----------------------------------------------------
-        // CANCEL
-        // ----------------------------------------------------
-
         if (
             action === "drill_cancel_ocr"
         ) {
@@ -749,7 +675,7 @@ export async function handleOCRButton(interaction) {
             return await interaction.update({
 
                 content:
-                    "? **DRILL SUBMISSION CANCELLED.**",
+                    "\u{274C} **DRILL SUBMISSION CANCELLED.**",
 
                 components:
                     []
@@ -758,10 +684,6 @@ export async function handleOCRButton(interaction) {
 
         }
 
-
-        // ----------------------------------------------------
-        // CONFIRM OCR
-        // ----------------------------------------------------
 
         if (
             action === "drill_confirm_ocr"
@@ -773,7 +695,7 @@ export async function handleOCRButton(interaction) {
             await interaction.update({
 
                 content:
-                    "? **VALUES CONFIRMED. SAVING YOUR DRILL...**",
+                    "\u{2705} **VALUES CONFIRMED. SAVING YOUR DRILL...**",
 
                 components:
                     []
@@ -791,10 +713,6 @@ export async function handleOCRButton(interaction) {
 
         }
 
-
-        // ----------------------------------------------------
-        // CORRECT OCR VALUES
-        // ----------------------------------------------------
 
         if (
             action === "drill_correct_ocr"
@@ -916,10 +834,6 @@ export async function handleOCRButton(interaction) {
 
         }
 
-
-        // ----------------------------------------------------
-        // MANUAL OCR ENTRY
-        // ----------------------------------------------------
 
         if (
             action === "drill_manual_ocr"
@@ -1047,14 +961,11 @@ export async function handleOCRModal(interaction) {
         const parts =
             interaction.customId.split(":");
 
-
         const action =
             parts[0];
 
-
         const token =
             parts[1];
-
 
         const data =
             pendingOCR.get(token);
@@ -1065,7 +976,7 @@ export async function handleOCRModal(interaction) {
             return await interaction.reply({
 
                 content:
-                    "? **THIS OCR SESSION HAS EXPIRED. PLEASE SUBMIT AGAIN.**",
+                    "\u{274C} **THIS OCR SESSION HAS EXPIRED. PLEASE SUBMIT AGAIN.**",
 
                 ephemeral:
                     true
@@ -1082,7 +993,7 @@ export async function handleOCRModal(interaction) {
             return await interaction.reply({
 
                 content:
-                    "? **THIS SUBMISSION BELONGS TO ANOTHER PLAYER.**",
+                    "\u{274C} **THIS SUBMISSION BELONGS TO ANOTHER PLAYER.**",
 
                 ephemeral:
                     true
@@ -1092,19 +1003,13 @@ export async function handleOCRModal(interaction) {
         }
 
 
-        // ----------------------------------------------------
-        // FINAL DAILY LIMIT CHECK
-        // ----------------------------------------------------
-
         const dailyLimit =
             canSubmitDailyDrill(
                 data.userId
             );
 
 
-        if (
-            !dailyLimit.allowed
-        ) {
+        if (!dailyLimit.allowed) {
 
             pendingOCR.delete(token);
 
@@ -1146,14 +1051,12 @@ export async function handleOCRModal(interaction) {
             );
 
 
-        if (
-            !validateKills(totalKills)
-        ) {
+        if (!validateKills(totalKills)) {
 
             return await interaction.reply({
 
                 content:
-                    "? **TOTAL KILLS MUST BE A VALID WHOLE NUMBER.**",
+                    "\u{274C} **TOTAL KILLS MUST BE A VALID WHOLE NUMBER.**",
 
                 ephemeral:
                     true
@@ -1163,14 +1066,12 @@ export async function handleOCRModal(interaction) {
         }
 
 
-        if (
-            !validatePercentage(accuracy)
-        ) {
+        if (!validatePercentage(accuracy)) {
 
             return await interaction.reply({
 
                 content:
-                    "? **ACCURACY MUST BE BETWEEN 0 AND 100.**",
+                    "\u{274C} **ACCURACY MUST BE BETWEEN 0 AND 100.**",
 
                 ephemeral:
                     true
@@ -1180,14 +1081,12 @@ export async function handleOCRModal(interaction) {
         }
 
 
-        if (
-            !validatePercentage(headshotAccuracy)
-        ) {
+        if (!validatePercentage(headshotAccuracy)) {
 
             return await interaction.reply({
 
                 content:
-                    "? **HEADSHOT ACCURACY MUST BE BETWEEN 0 AND 100.**",
+                    "\u{274C} **HEADSHOT ACCURACY MUST BE BETWEEN 0 AND 100.**",
 
                 ephemeral:
                     true
@@ -1227,14 +1126,12 @@ export async function handleOCRModal(interaction) {
         );
 
 
-        if (
-            !interaction.replied
-        ) {
+        if (!interaction.replied) {
 
             return await interaction.reply({
 
                 content:
-                    "? **COULD NOT PROCESS THE VALUES.**",
+                    "\u{274C} **COULD NOT PROCESS THE VALUES.**",
 
                 ephemeral:
                     true
@@ -1276,83 +1173,139 @@ async function createSubmission(
     } = data;
 
 
-    // --------------------------------------------------------
-    // FINAL APPLICATION-LEVEL DAILY LIMIT CHECK
-    // --------------------------------------------------------
-
     const dailyLimit =
         canSubmitDailyDrill(
             userId
         );
 
 
-    if (
-        !dailyLimit.allowed
-    ) {
+    if (!dailyLimit.allowed) {
 
         return await sendError(
-
             interaction,
-
             DAILY_LIMIT_MESSAGE
-
         );
 
     }
 
 
-    // --------------------------------------------------------
-    // VALIDATION
-    // --------------------------------------------------------
-
-    if (
-        !validateKills(totalKills)
-    ) {
+    if (!validateKills(totalKills)) {
 
         return await sendError(
-
             interaction,
-
-            "? **TOTAL NUMBER OF KILLS MUST BE A VALID WHOLE NUMBER.**"
-
+            "\u{274C} **TOTAL NUMBER OF KILLS MUST BE A VALID WHOLE NUMBER.**"
         );
 
     }
+
+
+    if (!validatePercentage(accuracy)) {
+
+        return await sendError(
+            interaction,
+            "\u{274C} **ACCURACY MUST BE BETWEEN 0 AND 100.**"
+        );
+
+    }
+
+
+    if (!validatePercentage(headshotAccuracy)) {
+
+        return await sendError(
+            interaction,
+            "\u{274C} **HEADSHOT ACCURACY MUST BE BETWEEN 0 AND 100.**"
+        );
+
+    }
+
+
+    // ========================================================
+    // SCREENSHOT HASH
+    //
+    // OCR normally supplies this.
+    // Manual entry does not, so download the exact image and
+    // generate the same SHA-256 hash here.
+    // ========================================================
+
+    let screenshotHash =
+        data.screenshotHash;
 
 
     if (
-        !validatePercentage(accuracy)
+        typeof screenshotHash !== "string" ||
+        !/^[a-f0-9]{64}$/i.test(
+            screenshotHash
+        )
     ) {
 
-        return await sendError(
+        try {
 
-            interaction,
+            console.log(
+                "SCREENSHOT HASH: Generating hash before database submission..."
+            );
 
-            "? **ACCURACY MUST BE BETWEEN 0 AND 100.**"
+            const imageResponse =
+                await fetch(
+                    screenshot.url
+                );
 
-        );
+
+            if (!imageResponse.ok) {
+
+                throw new Error(
+                    `Screenshot download failed: HTTP ${imageResponse.status}`
+                );
+
+            }
+
+
+            const imageBuffer =
+                await imageResponse.arrayBuffer();
+
+
+            screenshotHash =
+                await import("crypto")
+                    .then(
+                        cryptoModule =>
+                            cryptoModule
+                                .default
+                                .createHash("sha256")
+                                .update(
+                                    Buffer.from(
+                                        imageBuffer
+                                    )
+                                )
+                                .digest("hex")
+                    );
+
+
+            console.log(
+                "SCREENSHOT HASH: Generated successfully."
+            );
+
+        } catch (error) {
+
+            console.error(
+                "SCREENSHOT HASH ERROR:",
+                error
+            );
+
+            return await sendError(
+
+                interaction,
+
+                "\u{274C} **THE SCREENSHOT COULD NOT BE VERIFIED. PLEASE SUBMIT THE SCREENSHOT AGAIN.**"
+
+            );
+
+        }
 
     }
 
 
-    if (
-        !validatePercentage(headshotAccuracy)
-    ) {
-
-        return await sendError(
-
-            interaction,
-
-            "? **HEADSHOT ACCURACY MUST BE BETWEEN 0 AND 100.**"
-
-        );
-
-    }
-
-
-    // --------------------------------------------------------
+    // ========================================================
     // DATABASE
-    // --------------------------------------------------------
+    // ========================================================
 
     const result =
         submitDrill({
@@ -1378,8 +1331,7 @@ async function createSubmission(
             screenshotUrl:
                 screenshot.url,
 
-            screenshotHash:
-                data.screenshotHash,
+            screenshotHash,
 
             screenshotMessageId:
                 null,
@@ -1390,9 +1342,9 @@ async function createSubmission(
         });
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // DATABASE ERRORS
-    // --------------------------------------------------------
+    // ========================================================
 
     if (
         !result ||
@@ -1404,11 +1356,8 @@ async function createSubmission(
         ) {
 
             return await sendError(
-
                 interaction,
-
                 DAILY_LIMIT_MESSAGE
-
             );
 
         }
@@ -1422,7 +1371,22 @@ async function createSubmission(
 
                 interaction,
 
-                "? **THIS DRILL HAS ALREADY BEEN SUBMITTED.**"
+                "\u{1F6AB} **THIS DRILL HAS ALREADY BEEN SUBMITTED.**"
+
+            );
+
+        }
+
+
+        if (
+            result?.reason === "SCREENSHOT_DUPLICATE"
+        ) {
+
+            return await sendError(
+
+                interaction,
+
+                "\u{1F6AB} **THIS EXACT SCREENSHOT HAS ALREADY BEEN SUBMITTED. YOU CANNOT REUSE THE SAME SCREENSHOT.**"
 
             );
 
@@ -1437,7 +1401,7 @@ async function createSubmission(
 
                 interaction,
 
-                "? **YOU HAVE ALREADY REACHED YOUR PRIMARY DRILL LIMIT OF 2 FOR TODAY.**"
+                "\u{1F6AB} **YOU HAVE ALREADY REACHED YOUR PRIMARY DRILL LIMIT OF 2 FOR TODAY.**"
 
             );
 
@@ -1452,7 +1416,22 @@ async function createSubmission(
 
                 interaction,
 
-                "? **YOU HAVE ALREADY REACHED YOUR SECONDARY DRILL LIMIT OF 2 FOR TODAY.**"
+                "\u{1F6AB} **YOU HAVE ALREADY REACHED YOUR SECONDARY DRILL LIMIT OF 2 FOR TODAY.**"
+
+            );
+
+        }
+
+
+        if (
+            result?.reason === "SCREENSHOT_HASH_REQUIRED"
+        ) {
+
+            return await sendError(
+
+                interaction,
+
+                "\u{274C} **THE SCREENSHOT COULD NOT BE VERIFIED. PLEASE SUBMIT AGAIN.**"
 
             );
 
@@ -1463,32 +1442,32 @@ async function createSubmission(
 
             interaction,
 
-            "? **DRILL COULD NOT BE SUBMITTED.**"
+            "\u{274C} **DRILL COULD NOT BE SUBMITTED.**"
 
         );
 
     }
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // PREVIOUS DRILL
-    // --------------------------------------------------------
+    // ========================================================
 
     const previous =
         getLastDrill(userId);
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // LIFETIME STATS
-    // --------------------------------------------------------
+    // ========================================================
 
     const lifetime =
         getLifetimeStatsLocal(userId);
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // IMPROVEMENT
-    // --------------------------------------------------------
+    // ========================================================
 
     let improvement = null;
 
@@ -1514,9 +1493,9 @@ async function createSubmission(
     }
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // EMBED
-    // --------------------------------------------------------
+    // ========================================================
 
     const embed =
         new EmbedBuilder()
@@ -1533,7 +1512,7 @@ async function createSubmission(
 
                 `**GUN ROLE:** ${gunRole}\n` +
 
-                `**STATUS:** ? PENDING APPROVAL`
+                `**STATUS:** \u{23F3} PENDING APPROVAL`
 
             )
 
@@ -1589,10 +1568,6 @@ async function createSubmission(
             );
 
 
-    // --------------------------------------------------------
-    // CHANGE FROM LAST DRILL
-    // --------------------------------------------------------
-
     if (
         previous &&
         improvement
@@ -1601,7 +1576,7 @@ async function createSubmission(
         embed.addFields({
 
             name:
-                "?? CHANGE FROM LAST APPROVED DRILL",
+                "\u{1F4C8} CHANGE FROM LAST APPROVED DRILL",
 
             value:
 
@@ -1627,7 +1602,7 @@ async function createSubmission(
         embed.addFields({
 
             name:
-                "?? CHANGE FROM LAST APPROVED DRILL",
+                "\u{1F4C8} CHANGE FROM LAST APPROVED DRILL",
 
             value:
                 "This is your first approved drill.",
@@ -1640,18 +1615,12 @@ async function createSubmission(
     }
 
 
-    // --------------------------------------------------------
-    // LIFETIME
-    // --------------------------------------------------------
-
-    if (
-        lifetime
-    ) {
+    if (lifetime) {
 
         embed.addFields({
 
             name:
-                "?? LIFETIME AVERAGES",
+                "\u{1F4CA} LIFETIME AVERAGES",
 
             value:
 
@@ -1675,10 +1644,6 @@ async function createSubmission(
     }
 
 
-    // --------------------------------------------------------
-    // APPROVAL BUTTON
-    // --------------------------------------------------------
-
     const approveButton =
         new ButtonBuilder()
 
@@ -1691,7 +1656,7 @@ async function createSubmission(
             )
 
             .setEmoji(
-                "?"
+                "\u2705"
             )
 
             .setStyle(
@@ -1706,15 +1671,137 @@ async function createSubmission(
             );
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // PUBLIC MESSAGE
-    // --------------------------------------------------------
+    // ========================================================
 
     let message;
 
     try {
 
-        const publicChannel = await interaction.client.channels.fetch(config.aimDrillsChannelId);
+        const channelId =
+            String(
+                config.aimDrillsChannelId
+            ).trim();
+
+
+        console.log(
+            "PUBLIC DRILL DEBUG: ================================"
+        );
+
+        console.log(
+            "PUBLIC DRILL DEBUG: Config channel ID:",
+            channelId
+        );
+
+        console.log(
+            "PUBLIC DRILL DEBUG: Interaction channel ID:",
+            interaction.channelId
+        );
+
+        console.log(
+            "PUBLIC DRILL DEBUG: Guild ID:",
+            interaction.guildId
+        );
+
+        console.log(
+            "PUBLIC DRILL DEBUG: Bot ID:",
+            interaction.client.user?.id
+        );
+
+
+        const publicChannel =
+            await interaction.client.channels.fetch(
+                channelId
+            );
+
+
+        console.log(
+            "PUBLIC DRILL DEBUG: Fetched channel ID:",
+            publicChannel?.id
+        );
+
+        console.log(
+            "PUBLIC DRILL DEBUG: Fetched channel type:",
+            publicChannel?.type
+        );
+
+        console.log(
+            "PUBLIC DRILL DEBUG: Fetched channel name:",
+            publicChannel?.name
+        );
+
+        console.log(
+            "PUBLIC DRILL DEBUG: Fetched guild ID:",
+            publicChannel?.guildId
+        );
+
+
+        if (
+            !publicChannel
+        ) {
+
+            throw new Error(
+                "Configured AIM DRILLS channel could not be fetched."
+            );
+
+        }
+
+
+        if (
+            !publicChannel.isTextBased()
+        ) {
+
+            throw new Error(
+                `Configured AIM DRILLS channel is not text-based. Type: ${publicChannel.type}`
+            );
+
+        }
+
+
+        const permissions =
+            publicChannel.permissionsFor(
+                interaction.client.user
+            );
+
+
+        console.log(
+            "PUBLIC DRILL DEBUG: Can ViewChannel:",
+            permissions?.has("ViewChannel")
+        );
+
+        console.log(
+            "PUBLIC DRILL DEBUG: Can SendMessages:",
+            permissions?.has("SendMessages")
+        );
+
+        console.log(
+            "PUBLIC DRILL DEBUG: Can EmbedLinks:",
+            permissions?.has("EmbedLinks")
+        );
+
+
+        console.log(
+            "PUBLIC DRILL DEBUG: Screenshot URL length:",
+            String(
+                screenshot.url
+            ).length
+        );
+
+        console.log(
+            "PUBLIC DRILL DEBUG: Embed JSON:",
+            JSON.stringify(
+                embed.toJSON()
+            )
+        );
+
+        console.log(
+            "PUBLIC DRILL DEBUG: Components JSON:",
+            JSON.stringify(
+                row.toJSON()
+            )
+        );
+
 
         message =
             await publicChannel.send({
@@ -1729,6 +1816,13 @@ async function createSubmission(
 
             });
 
+
+        console.log(
+            "PUBLIC DRILL DEBUG: PUBLIC MESSAGE SENT:",
+            message.id
+        );
+
+
     } catch (error) {
 
         console.error(
@@ -1736,22 +1830,48 @@ async function createSubmission(
             error
         );
 
+        console.error(
+            "PUBLIC DRILL MESSAGE ERROR CODE:",
+            error?.code
+        );
+
+        console.error(
+            "PUBLIC DRILL MESSAGE ERROR STATUS:",
+            error?.status
+        );
+
+        console.error(
+            "PUBLIC DRILL MESSAGE ERROR MESSAGE:",
+            error?.message
+        );
+
+        console.error(
+            "PUBLIC DRILL MESSAGE ERROR METHOD:",
+            error?.requestBody?.method
+        );
+
+        console.error(
+            "PUBLIC DRILL MESSAGE ERROR DATA:",
+            JSON.stringify(
+                error?.requestBody?.data || null
+            )
+        );
+
+
         return await sendError(
 
             interaction,
 
-            "? **DRILL WAS SAVED, BUT THE PUBLIC RESULT MESSAGE COULD NOT BE CREATED. PLEASE CONTACT AN ADMIN.**"
+            "\u{274C} **DRILL WAS SAVED, BUT THE PUBLIC RESULT MESSAGE COULD NOT BE CREATED. PLEASE CONTACT AN ADMIN.**"
 
         );
 
     }
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // SAVE PUBLIC MESSAGE ID
-    //
-    // Required later by /delete-uploaded-data.
-    // --------------------------------------------------------
+    // ========================================================
 
     try {
 
@@ -1785,9 +1905,9 @@ async function createSubmission(
     }
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // ACKNOWLEDGE INTERACTION
-    // --------------------------------------------------------
+    // ========================================================
 
     if (
         interaction.deferred &&
@@ -1797,7 +1917,7 @@ async function createSubmission(
         await interaction.editReply({
 
             content:
-                "? **YOUR DRILL HAS BEEN SUBMITTED FOR APPROVAL.**",
+                "\u{2705} **YOUR DRILL HAS BEEN SUBMITTED FOR APPROVAL.**",
 
             components:
                 []
@@ -1811,7 +1931,7 @@ async function createSubmission(
         await interaction.reply({
 
             content:
-                "? **YOUR DRILL HAS BEEN SUBMITTED FOR APPROVAL.**",
+                "\u{2705} **YOUR DRILL HAS BEEN SUBMITTED FOR APPROVAL.**",
 
             ephemeral:
                 true
@@ -1837,18 +1957,12 @@ export async function handleApproval(interaction) {
         const parts =
             interaction.customId.split(":");
 
-
         const drillId =
             Number(parts[1]);
-
 
         const ownerId =
             parts[2];
 
-
-        // ----------------------------------------------------
-        // SECURITY
-        // ----------------------------------------------------
 
         if (
             interaction.user.id !== ownerId
@@ -1857,7 +1971,7 @@ export async function handleApproval(interaction) {
             return await interaction.reply({
 
                 content:
-                    "? **ONLY THE PLAYER WHO SUBMITTED THIS DRILL CAN APPROVE IT.**",
+                    "\u{274C} **ONLY THE PLAYER WHO SUBMITTED THIS DRILL CAN APPROVE IT.**",
 
                 ephemeral:
                     true
@@ -1867,17 +1981,10 @@ export async function handleApproval(interaction) {
         }
 
 
-        // ----------------------------------------------------
-        // APPROVE
-        // ----------------------------------------------------
-
         const result =
             approveDrill(
-
                 drillId,
-
                 interaction.user.id
-
             );
 
 
@@ -1889,7 +1996,7 @@ export async function handleApproval(interaction) {
             return await interaction.reply({
 
                 content:
-                    "? **THIS DRILL COULD NOT BE APPROVED.**",
+                    "\u{274C} **THIS DRILL COULD NOT BE APPROVED.**",
 
                 ephemeral:
                     true
@@ -1910,7 +2017,7 @@ export async function handleApproval(interaction) {
             return await interaction.reply({
 
                 content:
-                    "? **THE APPROVED DRILL COULD NOT BE FOUND.**",
+                    "\u{274C} **THE APPROVED DRILL COULD NOT BE FOUND.**",
 
                 ephemeral:
                     true
@@ -1922,11 +2029,8 @@ export async function handleApproval(interaction) {
 
         const progress =
             getDailyProgress(
-
                 ownerId,
-
                 drill.day_key
-
             );
 
 
@@ -1945,7 +2049,7 @@ export async function handleApproval(interaction) {
 
                     `**GUN ROLE:** ${drill.gun_role}\n` +
 
-                    `**STATUS:** ? APPROVED`
+                    `**STATUS:** \u{2705} APPROVED`
 
                 )
 
@@ -2038,10 +2142,6 @@ export async function handleApproval(interaction) {
         });
 
 
-        // ----------------------------------------------------
-        // NORMAL PROGRESS MESSAGE
-        // ----------------------------------------------------
-
         if (
             progress.total_count < 4
         ) {
@@ -2050,7 +2150,7 @@ export async function handleApproval(interaction) {
 
                 content:
 
-                    "? **UR DATA HAS BEEN SUCCESSFULLY IMPORTED AND STORED**\n\n" +
+                    "\u{1F4BE} **YOUR DATA HAS BEEN SUCCESSFULLY IMPORTED AND STORED.**\n\n" +
 
                     `\u{1F3AF} PRIMARY: **${progress.primary_count}/2**\n` +
 
@@ -2063,17 +2163,13 @@ export async function handleApproval(interaction) {
         }
 
 
-        // ----------------------------------------------------
-        // 4/4 COMPLETE
-        // ----------------------------------------------------
-
         return await interaction.followUp({
 
             content:
 
                 `\u{2705} 4/4 DRILLS COMPLETE, <@${ownerId}>!\n` +
 
-                "\u{1F3C6} MISSION ACCOMPLISHED � YOU GAVE IT YOUR ALL TODAY!\n" +
+                "\u{1F3C6} MISSION ACCOMPLISHED • YOU GAVE IT YOUR ALL TODAY!\n" +
 
                 "\u{1F4AA} KEEP GRINDING, AIM SHARP, AND COME BACK STRONGER TOMORROW!"
 

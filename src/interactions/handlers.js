@@ -135,7 +135,7 @@ View your current and longest streak.
 \`/delete-uploaded-data\`
 Delete one of your own APPROVED drills using its specific Drill ID.
 
-`/peak-drill`
+\`/peak-drill\`
 View your peak kills, peak accuracy and peak headshot accuracy for the current year.
 
 **DAILY TARGET**
@@ -156,10 +156,10 @@ Only approved drills count toward progress.
 
 **ADMIN COMMANDS**
 
-`/admin-register <user>`
+\`/admin-register <user>\`
 Register permanent Primary and Secondary gun roles for any user.
 
-`/admin-delete-uploaded-data <drill_id>`
+\`/admin-delete-uploaded-data <drill_id>\`
 Delete any user's APPROVED drill using its specific Drill ID.
 
 \`/admin-approve <drill_id>\`
@@ -233,7 +233,7 @@ Correct a player's permanent Primary or Secondary gun role.
                 return await interaction.reply({
 
                     content:
-                        `THIS COMMAND CAN ONLY BE USED IN <#${config.aimDrillsChannelId}> ??`,
+                        `\u{1F6AB} THIS COMMAND CAN ONLY BE USED IN <#${config.aimDrillsChannelId}>`,
 
                     ephemeral: true
 
@@ -344,7 +344,6 @@ Correct a player's permanent Primary or Secondary gun role.
 
 
         // ====================================================
-        // ====================================================
         // /ADMIN-DELETE-UPLOADED-DATA
         // ====================================================
 
@@ -357,6 +356,7 @@ Correct a player's permanent Primary or Secondary gun role.
         }
 
 
+        // ====================================================
         // ADMIN APPROVE
         // ====================================================
 
@@ -370,7 +370,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
                 return await interaction.reply({
                     content:
-                        "\u274C Administrator permission required.",
+                        "\u{274C} Administrator permission required.",
                     ephemeral: true
                 });
 
@@ -391,7 +391,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
                 return await interaction.reply({
                     content:
-                        `\u274C Could not approve Drill ID **${drillId}**.\nReason: **${result.reason}**`,
+                        `\u{274C} Could not approve Drill ID **${drillId}**.\nReason: **${result.reason}**`,
                     ephemeral: true
                 });
 
@@ -399,7 +399,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
             return await interaction.reply({
                 content:
-                    `\u2705 Drill ID **${drillId}** has been approved.`,
+                    `\u{2705} Drill ID **${drillId}** has been approved.`,
                 ephemeral: false
             });
 
@@ -420,7 +420,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
                 return await interaction.reply({
                     content:
-                        "? Administrator permission required.",
+                        "\u{274C} Administrator permission required.",
                     ephemeral: true
                 });
 
@@ -446,7 +446,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
                 return await interaction.reply({
                     content:
-                        `\u274C Could not reject Drill ID **${drillId}**.\nReason: **${result.reason}**`,
+                        `\u{274C} Could not reject Drill ID **${drillId}**.\nReason: **${result.reason}**`,
                     ephemeral: true
                 });
 
@@ -454,7 +454,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
             return await interaction.reply({
                 content:
-                    `\u274C Drill ID **${drillId}** rejected.` +
+                    `\u{274C} Drill ID **${drillId}** rejected.` +
                     (
                         reason
                             ? `\nReason: ${reason}`
@@ -480,7 +480,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
                 return await interaction.reply({
                     content:
-                        "? Administrator permission required.",
+                        "\u{274C} Administrator permission required.",
                     ephemeral: true
                 });
 
@@ -504,7 +504,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
                 return await interaction.reply({
                     content:
-                        `\u274C No registered data found for ${member}.`,
+                        `\u{274C} No registered data found for ${member}.`,
                     ephemeral: true
                 });
 
@@ -544,7 +544,9 @@ Correct a player's permanent Primary or Secondary gun role.
 
         if (
             interaction.isStringSelectMenu() &&
-            interaction.customId.startsWith("admin_primary_role_select:")
+            interaction.customId.startsWith(
+                "admin_primary_role_select:"
+            )
         ) {
 
             return await handleAdminPrimaryRole(
@@ -560,7 +562,9 @@ Correct a player's permanent Primary or Secondary gun role.
 
         if (
             interaction.isStringSelectMenu() &&
-            interaction.customId.startsWith("admin_secondary_role_select:")
+            interaction.customId.startsWith(
+                "admin_secondary_role_select:"
+            )
         ) {
 
             return await handleAdminSecondaryRole(
@@ -657,6 +661,7 @@ Correct a player's permanent Primary or Secondary gun role.
 
     }
 
+
     // ========================================================
     // STRING SELECT MENUS
     // ========================================================
@@ -703,7 +708,6 @@ Correct a player's permanent Primary or Secondary gun role.
         }
 
 
-
         // ====================================================
         // LIFETIME LEADERBOARD
         // ====================================================
@@ -723,7 +727,6 @@ Correct a player's permanent Primary or Secondary gun role.
             );
 
         }
-
 
 
         // ====================================================

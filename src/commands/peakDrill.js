@@ -83,7 +83,7 @@ export async function handlePeakDrill(interaction) {
             )
             .setFooter({
                 text:
-                    `Approved drills • ${year} calendar year`
+                    `Approved drills â€¢ ${year} calendar year`
             });
 
     return await interaction.reply({
