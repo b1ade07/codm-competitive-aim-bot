@@ -156,6 +156,9 @@ Only approved drills count toward progress.
 
 **ADMIN COMMANDS**
 
+`/admin-register <user>`
+Register permanent Primary and Secondary gun roles for any user.
+
 `/admin-delete-uploaded-data <drill_id>`
 Delete any user's APPROVED drill using its specific Drill ID.
 
